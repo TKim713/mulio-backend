@@ -1,11 +1,8 @@
 package com.api.mulio_backend.helper.response
 
 data class CreateUserResponse(
-    val username: String,
-
-    val email: String,
-
-    val password: String,
-
-    val role: String
+    var username: String? = null,
+    var email: String? = null,
+    var role: String? = null,
+    var password: String? = null
 )

@@ -2,6 +2,7 @@ package com.api.mulio_backend.config
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
+import org.modelmapper.ModelMapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -28,11 +29,8 @@ class SecurityConfig @Autowired constructor(
             .csrf { csrf -> csrf.disable() }
             .authorizeHttpRequests { authorize ->
                 authorize
+                    // All user can access
                     .requestMatchers("/api/auth/**").permitAll()
-                    // APIs accessible by SYSTEM_ADMIN and RESTAURANT_OWNER only (e.g., staff management)
-                    //.requestMatchers("/api/staff/**").hasAnyAuthority(RolePermissions.STAFF_MANAGEMENT_ROLES)
-                    // APIs accessible by SYSTEM_ADMIN, RESTAURANT_OWNER, and RESTAURANT_STAFF (e.g., customer management)
-                    //.requestMatchers("/api/customer/**").hasAnyAuthority(RolePermissions.CUSTOMER_MANAGEMENT_ROLES)
                     // All other APIs accessible by all defined roles
                     .requestMatchers("/api/**").hasAnyAuthority(RolePermissions.ALL_API_ROLES.toString())
                     // Any other requests should be authenticated
@@ -65,5 +63,10 @@ class SecurityConfig @Autowired constructor(
     @Bean
     fun passwordEncoder(): BCryptPasswordEncoder {
         return BCryptPasswordEncoder()
+    }
+
+    @Bean
+    fun modelMapper(): ModelMapper {
+        return ModelMapper()
     }
 }
