@@ -5,4 +5,5 @@ import com.api.mulio_backend.helper.response.CreateUserResponse
 
 interface UserService {
     fun createUser(userRequest: CreateUserRequest): CreateUserResponse
+    fun verifyEmail(tokenStr: String): String
 }
