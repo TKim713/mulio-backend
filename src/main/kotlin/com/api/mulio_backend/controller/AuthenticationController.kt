@@ -26,9 +26,14 @@ class AuthenticationController @Autowired constructor(
             val jwtResponse = authenticationService.authenticate(authenticationRequest)
             ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseObject(HttpStatus.OK.value(), "Authentication successful", jwtResponse))
+        } catch (e: CustomException) {
+            // Handle custom exceptions based on their specific HTTP status
+            ResponseEntity.status(e.status)
+                .body(ResponseObject(e.status.value(), e.message ?: "Error during authentication", null))
         } catch (e: Exception) {
-            ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(ResponseObject(HttpStatus.UNAUTHORIZED.value(), "INVALID_CREDENTIALS", null))
+            // Generic exception handling for other cases
+            ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseObject(HttpStatus.BAD_REQUEST.value(), "An unexpected error occurred: ${e.message}", null))
         }
     }
 
