@@ -24,7 +24,7 @@ class AuthenticationServiceImpl @Autowired constructor(
         try {
             authenticationManager.authenticate(
                 UsernamePasswordAuthenticationToken(
-                    authenticationRequest.username,
+                    authenticationRequest.email,
                     authenticationRequest.password
                 )
             )
@@ -32,7 +32,7 @@ class AuthenticationServiceImpl @Autowired constructor(
             throw Exception("INVALID_CREDENTIALS", e)
         }
 
-        val userDetails: UserDetails = jwtUserDetailsService.loadUserByUsername(authenticationRequest.username)
+        val userDetails: UserDetails = jwtUserDetailsService.loadUserByUsername(authenticationRequest.email)
         val token: String = jwtTokenUtil.generateToken(userDetails)
 
         return JwtResponse(token)
