@@ -1,5 +1,6 @@
 package com.api.mulio_backend.controller
 
+import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.CreateUserRequest
 import com.api.mulio_backend.helper.request.JwtRequest
 import com.api.mulio_backend.helper.response.CreateUserResponse
@@ -37,6 +38,9 @@ class AuthenticationController @Autowired constructor(
             val userResponse = userService.createUser(userRequest)
             ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseObject(HttpStatus.OK.value(), "User created successfully", userResponse))
+        } catch (e: CustomException) {
+            ResponseEntity.status(e.status)
+                .body(ResponseObject(e.status.value(), "${e.message}", null))
         } catch (e: Exception) {
             ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ResponseObject(HttpStatus.BAD_REQUEST.value(), "Error creating user: ${e.message}", null))

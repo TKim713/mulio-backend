@@ -11,15 +11,15 @@ import org.springframework.stereotype.Service
 @Service
 class JwtUserDetailsService(private val userRepository: UserRepository) : UserDetailsService {
 
-    override fun loadUserByUsername(username: String): UserDetails {
+    override fun loadUserByUsername(email: String): UserDetails {
         // Fetch user from the database
-        val user = userRepository.findByUsername(username)
-            ?: throw UsernameNotFoundException("USER_NOT_FOUND '$username'.")
+        val user = userRepository.findByEmail(email)
+            ?: throw UsernameNotFoundException("USER_NOT_FOUND for email '$email'.")
 
         // Convert the user's role to a GrantedAuthority
         val authorities: List<GrantedAuthority> = listOf(SimpleGrantedAuthority(user.role.name))
 
-        // Return Spring Security User object with username, password, and authorities
-        return org.springframework.security.core.userdetails.User(user.username, user.password, authorities)
+        // Return Spring Security User object with email, password, and authorities
+        return org.springframework.security.core.userdetails.User(user.email, user.password, authorities)
     }
 }

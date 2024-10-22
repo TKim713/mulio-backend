@@ -3,6 +3,7 @@ package com.api.mulio_backend.service.impl
 import com.api.mulio_backend.config.MapData
 import com.api.mulio_backend.helper.enums.Role
 import com.api.mulio_backend.helper.enums.TokenType
+import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.CreateUserRequest
 import com.api.mulio_backend.helper.response.CreateUserResponse
 import com.api.mulio_backend.model.Token
@@ -13,6 +14,7 @@ import com.api.mulio_backend.service.EmailService
 import com.api.mulio_backend.service.UserService
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.http.HttpStatus
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.stereotype.Service
 import java.util.*
@@ -31,6 +33,12 @@ class UserServiceImpl @Autowired constructor(
     private val now: Date = Date()
 
     override fun createUser(userRequest: CreateUserRequest): CreateUserResponse {
+        // Kiểm tra email có tồn tại hay không
+        val existingUser = userRepository.findByEmail(userRequest.email)
+        if (existingUser != null) {
+            throw CustomException("Email already in use", HttpStatus.CONFLICT)
+        }
+
         // Mã hóa mật khẩu
         val password = passwordEncoder.encode(userRequest.password)
 
@@ -40,7 +48,7 @@ class UserServiceImpl @Autowired constructor(
             email = userRequest.email,
             password = password,
             role = Role.valueOf(userRequest.role),
-            createdAt = now // Change to Date
+            createdAt = Date() // Sử dụng Date thay vì LocalDateTime
         )
 
         val savedUser = userRepository.save(user)
@@ -54,7 +62,7 @@ class UserServiceImpl @Autowired constructor(
                 expired = false,
                 revoked = false,
                 userId = it,
-                createdAt = now
+                createdAt = Date()
             )
         }
         if (token != null) {
@@ -62,7 +70,7 @@ class UserServiceImpl @Autowired constructor(
         }
 
         // Gửi email xác thực với tên người dùng
-        emailService.sendEmail(savedUser.email, "🌟 Xác Thực Email của Bạn cho Mulio! 🌟", tokenStr, savedUser.username)
+        emailService.sendEmail(savedUser.email, "Xác Thực Email của Bạn cho Mulio!", tokenStr, savedUser.username)
 
         return mapData.mapOne(savedUser, CreateUserResponse::class.java)
     }
