@@ -8,7 +8,7 @@ import java.util.*
 @Document(collection = "user")
 data class User(
     @Id
-    val userId: String? = null,
+    val userId: String,
     val username: String,
     val email: String,
     val password: String,

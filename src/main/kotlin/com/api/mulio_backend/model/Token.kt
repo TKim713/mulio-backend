@@ -8,7 +8,7 @@ import java.util.*
 @Document(collection = "token")
 data class Token(
     @Id
-    val tokenId: String? = null,
+    val tokenId: String,
     val token: String,
 
     val tokenType: TokenType,

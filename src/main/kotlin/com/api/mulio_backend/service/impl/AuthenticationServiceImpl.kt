@@ -42,6 +42,8 @@ class AuthenticationServiceImpl @Autowired constructor(
             )
         } catch (e: BadCredentialsException) {
             throw CustomException("INVALID_CREDENTIALS", HttpStatus.UNAUTHORIZED)
+        } catch (e: CustomException) {
+            throw e;
         } catch (e: Exception) {
             throw CustomException(e.message ?: "Authentication failed", HttpStatus.BAD_REQUEST)
         }
