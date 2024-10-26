@@ -2,13 +2,12 @@ package com.api.mulio_backend.model
 
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.mapping.Document
-import java.sql.Timestamp
 import java.util.*
 
 @Document(collection = "product")
 data class Product(
     @Id
-    val productId: Long? = null,
+    val productId: String,
     val productName: String,
     val price: Float,
     val description: String,

@@ -31,6 +31,7 @@ class SecurityConfig @Autowired constructor(
                 authorize
                     // All user can access
                     .requestMatchers("/api/auth/**").permitAll()
+                    .requestMatchers("/api/cart/**").permitAll()
                     // All other APIs accessible by all defined roles
                     .requestMatchers("/api/**").hasAnyAuthority(RolePermissions.ALL_API_ROLES.toString())
                     // Any other requests should be authenticated
