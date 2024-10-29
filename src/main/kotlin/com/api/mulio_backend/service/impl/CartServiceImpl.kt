@@ -3,6 +3,7 @@ package com.api.mulio_backend.service.impl
 import com.api.mulio_backend.config.MapData
 import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.CreateCartRequest
+import com.api.mulio_backend.helper.response.CartProductResponse
 import com.api.mulio_backend.helper.response.CartResponse
 import com.api.mulio_backend.model.CartProduct
 import com.api.mulio_backend.repository.CartRepository
@@ -33,27 +34,34 @@ class CartServiceImpl @Autowired constructor(
         val existingCart = cartRepository.findByUserId(createCartRequest.userId)
 
         // Giỏ hàng mới hoặc đã tồn tại
-        val updatedItems = existingCart?.products?.toMutableList() ?: mutableListOf()
+        val updatedProducts = existingCart?.products?.toMutableList() ?: mutableListOf()
 
         // Kiểm tra xem sản phẩm đã tồn tại trong giỏ hàng chưa
-        val existingItem = updatedItems.find { it.productId == createCartRequest.productId }
+        val existingItem = updatedProducts.find { it.productId == createCartRequest.productId }
         if (existingItem != null) {
             // Nếu đã có, cập nhật số lượng sản phẩm
             existingItem.amount += createCartRequest.amount
         } else {
             // Nếu chưa có, thêm sản phẩm mới vào danh sách
-            updatedItems.add(CartProduct(cartProductId = UUID.randomUUID().toString(), productId = createCartRequest.productId, amount = createCartRequest.amount, product = product))
+            updatedProducts.add(
+                CartProduct(
+                    cartProductId = UUID.randomUUID().toString(),
+                    userId = createCartRequest.userId,
+                    productId = createCartRequest.productId,
+                    amount = createCartRequest.amount
+                )
+            )
         }
 
         // Cập nhật lại tổng số lượng và tổng giá
-        val totalNumber = updatedItems.sumOf { it.amount }
-        val totalPrice = updatedItems.fold(0f) { acc, item ->
-            acc + (item.product.price * item.amount)
+        val totalNumber = updatedProducts.sumOf { it.amount }
+        val totalPrice = updatedProducts.fold(0f) { acc, item ->
+            acc + (product.price * item.amount)
         }
 
         // Cập nhật giỏ hàng
         val updatedCart = existingCart?.copy(
-            products = updatedItems,
+            products = updatedProducts,
             totalNumber = totalNumber,
             totalPrice = totalPrice,
             updatedAt = now
@@ -62,14 +70,33 @@ class CartServiceImpl @Autowired constructor(
         // Lưu giỏ hàng đã cập nhật
         val savedCart = updatedCart?.let { cartRepository.save(it) }
 
-        // Chuyển đổi giỏ hàng đã lưu thành phản hồi
-        return mapData.mapOne(savedCart, CartResponse::class.java)
+        // Tạo List<CartProductResponse> từ List<CartProduct>
+        val cartProductResponses = savedCart?.products?.map { cartProduct ->
+            val productDetails = productRepository.findById(cartProduct.productId).orElse(null)
+            CartProductResponse(
+                productName = productDetails?.productName,
+                price = productDetails?.price,
+                description = productDetails?.description,
+                size = productDetails?.size,
+                color = productDetails?.color,
+                amount = cartProduct.amount,
+                productType = productDetails?.productType,
+                image = productDetails?.image
+            )
+        }
+
+        val cartResponse = mapData.mapOne(savedCart, CartResponse::class.java)
+        if (cartProductResponses != null) {
+            cartResponse.products = cartProductResponses
+        }
+
+        return cartResponse
     }
 
     // Hàm lấy tất cả sản phẩm trong giỏ hàng
     override fun getCartByUserId(userId: String): CartResponse {
-        // Lấy giỏ hàng của người dùng nếu đã có, nếu chưa tạo giỏ hàng mới
         val existingCart = cartRepository.findByUserId(userId)
+            ?: throw CustomException("User cart not found", HttpStatus.NOT_FOUND)
         return mapData.mapOne(existingCart, CartResponse::class.java)
     }
 }

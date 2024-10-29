@@ -14,6 +14,9 @@ import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+import org.springframework.web.cors.CorsConfiguration
+import org.springframework.web.cors.CorsConfigurationSource
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
 @Configuration
 @EnableWebSecurity
@@ -27,14 +30,12 @@ class SecurityConfig @Autowired constructor(
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http
             .csrf { csrf -> csrf.disable() }
+            .cors { } // Enables CORS with the configuration specified in corsConfigurationSource()
             .authorizeHttpRequests { authorize ->
                 authorize
-                    // All user can access
                     .requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("/api/cart/**").permitAll()
-                    // All other APIs accessible by all defined roles
                     .requestMatchers("/api/**").hasAnyAuthority(RolePermissions.ALL_API_ROLES.toString())
-                    // Any other requests should be authenticated
                     .anyRequest().authenticated()
             }
             .exceptionHandling { exceptionHandling ->
@@ -53,10 +54,22 @@ class SecurityConfig @Autowired constructor(
     }
 
     @Bean
+    fun corsConfigurationSource(): CorsConfigurationSource {
+        val corsConfiguration = CorsConfiguration()
+        corsConfiguration.allowedOrigins = listOf("http://localhost:3000")
+        corsConfiguration.allowedMethods = listOf("GET", "POST", "PUT", "DELETE")
+        corsConfiguration.allowedHeaders = listOf("Authorization", "Content-Type")
+        corsConfiguration.allowCredentials = true
+
+        val source = UrlBasedCorsConfigurationSource()
+        source.registerCorsConfiguration("/**", corsConfiguration)
+        return source
+    }
+
+    @Bean
     @Throws(Exception::class)
     fun authManager(http: HttpSecurity): AuthenticationManager {
-        val authenticationManagerBuilder =
-            http.getSharedObject(AuthenticationManagerBuilder::class.java)
+        val authenticationManagerBuilder = http.getSharedObject(AuthenticationManagerBuilder::class.java)
         authenticationManagerBuilder.userDetailsService(jwtUserDetailsService)
         return authenticationManagerBuilder.build()
     }
