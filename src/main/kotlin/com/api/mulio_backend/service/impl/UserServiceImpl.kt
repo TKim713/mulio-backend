@@ -15,7 +15,6 @@ import com.api.mulio_backend.repository.TokenRepository
 import com.api.mulio_backend.repository.UserRepository
 import com.api.mulio_backend.service.EmailService
 import com.api.mulio_backend.service.UserService
-import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
@@ -67,12 +66,14 @@ class UserServiceImpl @Autowired constructor(
             userId = savedUser.userId,
             createdAt = now
         )
-        tokenRepository.save(token)
+        val savedToken = tokenRepository.save(token)
 
         // Gửi email xác thực với tên người dùng
         emailService.sendEmail(savedUser.email, "Xác Thực Email của Bạn cho Mulio!", tokenStr, savedUser.username)
 
-        return mapData.mapOne(savedUser, CreateUserResponse::class.java)
+        val response = mapData.mapOne(savedUser, CreateUserResponse::class.java)
+        response.token = savedToken.token
+        return response
     }
 
     // Method xác thực email
