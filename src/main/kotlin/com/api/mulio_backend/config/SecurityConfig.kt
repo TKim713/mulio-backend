@@ -34,7 +34,7 @@ class SecurityConfig @Autowired constructor(
             .authorizeHttpRequests { authorize ->
                 authorize
                     .requestMatchers("/api/auth/**").permitAll()
-                    .requestMatchers("/api/**").hasAnyAuthority(*RolePermissions.ALL_API_ROLES)
+                    .requestMatchers("/api/cart/**").hasAnyAuthority(*RolePermissions.ALL_API_ROLES)
                     .anyRequest().authenticated()
             }
             .exceptionHandling { exceptionHandling ->
