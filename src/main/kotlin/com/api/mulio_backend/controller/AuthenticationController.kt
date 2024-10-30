@@ -8,6 +8,7 @@ import com.api.mulio_backend.helper.response.JwtResponse
 import com.api.mulio_backend.helper.response.ResponseObject
 import com.api.mulio_backend.service.AuthenticationService
 import com.api.mulio_backend.service.UserService
+import jakarta.validation.Valid
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -38,7 +39,7 @@ class AuthenticationController @Autowired constructor(
     }
 
     @PostMapping("/register")
-    fun register(@RequestBody userRequest: CreateUserRequest): ResponseEntity<ResponseObject<CreateUserResponse>> {
+    fun register(@Valid @RequestBody userRequest: CreateUserRequest): ResponseEntity<ResponseObject<CreateUserResponse>> {
         return try {
             val userResponse = userService.createUser(userRequest)
             ResponseEntity.status(HttpStatus.OK)
@@ -65,6 +66,21 @@ class AuthenticationController @Autowired constructor(
             else -> {
                 ResponseEntity.status(HttpStatus.BAD_REQUEST).body(message)
             }
+        }
+    }
+
+    @PostMapping("/logout")
+    fun logout(@RequestHeader("Authorization") token: String): ResponseEntity<ResponseObject<String>> {
+        val jwtToken = token.replace("Bearer ", "")
+        return try {
+            authenticationService.logout(jwtToken)
+            ResponseEntity.ok(ResponseObject(HttpStatus.OK.value(), "Logout successfully", null))
+        } catch (e: CustomException) {
+            ResponseEntity.status(e.status)
+                .body(ResponseObject(e.status.value(), e.message ?: "Error during logout", null))
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseObject(HttpStatus.BAD_REQUEST.value(), "An unexpected error occurred: ${e.message}", null))
         }
     }
 }

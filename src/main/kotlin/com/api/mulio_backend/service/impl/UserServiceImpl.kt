@@ -60,10 +60,9 @@ class UserServiceImpl @Autowired constructor(
         val token = Token(
             tokenId = UUID.randomUUID().toString(),
             token = tokenStr,
-            tokenType = TokenType.BEARER,
             expired = false,
             revoked = false,
-            userId = savedUser.userId,
+            user = savedUser.email,
             createdAt = now
         )
         val savedToken = tokenRepository.save(token)
@@ -80,13 +79,16 @@ class UserServiceImpl @Autowired constructor(
     override fun verifyEmail(tokenStr: String): String {
         val token = tokenRepository.findByToken(tokenStr)
         return if (token != null && !token.expired && !token.revoked) {
-            val user = userRepository.findById(token.userId).orElse(null)
+            val user = userRepository.findByEmail(token.user)
 
             return if (user != null) {
                 user.enabled = true // Kích hoạt tài khoản user
                 userRepository.save(user)
 
                 token.expired = true // Đánh dấu token đã hết hạn sau khi xác thực
+                token.revoked = true
+                token.updatedAt = now
+                token.deletedAt = now
                 tokenRepository.save(token)
 
                 val newCart = Cart(

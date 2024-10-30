@@ -1,8 +1,10 @@
 package com.api.mulio_backend.config
 
+import com.api.mulio_backend.repository.TokenRepository
 import io.jsonwebtoken.Claims
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.SignatureAlgorithm
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.stereotype.Component
@@ -14,8 +16,11 @@ class JwtTokenUtil : Serializable {
 
     companion object {
         private const val serialVersionUID = -2550185165626007488L
-        const val JWT_TOKEN_VALIDITY = 5 * 60 * 60
+        const val JWT_TOKEN_VALIDITY = 7 * 24 * 60 * 60
     }
+
+    @Autowired
+    private lateinit var tokenRepository: TokenRepository
 
     @Value("\${jwt.secret}")
     lateinit var secret: String
@@ -48,6 +53,11 @@ class JwtTokenUtil : Serializable {
         return expiration.before(Date())
     }
 
+    private fun isTokenRevoked(token: String): Boolean {
+        val savedToken = tokenRepository.findByToken(token)
+        return savedToken != null && savedToken.revoked
+    }
+
     // Generate token for user
     fun generateToken(userDetails: UserDetails): String {
         val claims = mutableMapOf<String, Any>()
@@ -67,6 +77,6 @@ class JwtTokenUtil : Serializable {
     // Validate token
     fun validateToken(token: String, userDetails: UserDetails): Boolean {
         val username = getUsernameFromToken(token)
-        return username == userDetails.username && !isTokenExpired(token)
+        return username == userDetails.username && !isTokenExpired(token) && !isTokenRevoked(token)
     }
 }

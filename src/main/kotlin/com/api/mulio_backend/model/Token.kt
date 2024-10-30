@@ -11,14 +11,14 @@ data class Token(
     val tokenId: String,
     val token: String,
 
-    val tokenType: TokenType,
+    val tokenType: TokenType? = null,
 
     var expired: Boolean = false, // Xác định token có hết hạn không
-    val revoked: Boolean = false, // Xác định token có bị thu hồi không
+    var revoked: Boolean = false, // Xác định token có bị thu hồi không
 
-    val userId: String,
+    val user: String,
 
     val createdAt: Date,
-    val updatedAt: Date? = null,
-    val deletedAt: Date? = null
+    var updatedAt: Date? = null,
+    var deletedAt: Date? = null
 )
