@@ -2,10 +2,12 @@ package com.api.mulio_backend.service.impl
 
 import com.api.mulio_backend.config.JwtTokenUtil
 import com.api.mulio_backend.config.JwtUserDetailsService
+import com.api.mulio_backend.helper.enums.TokenType
 import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.JwtRequest
 import com.api.mulio_backend.helper.response.JwtResponse
-import com.api.mulio_backend.model.User
+import com.api.mulio_backend.model.Token
+import com.api.mulio_backend.repository.TokenRepository
 import com.api.mulio_backend.repository.UserRepository
 import com.api.mulio_backend.service.AuthenticationService
 import org.springframework.beans.factory.annotation.Autowired
@@ -15,15 +17,18 @@ import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.stereotype.Service
-import kotlin.reflect.jvm.internal.impl.descriptors.Visibilities.Private
+import java.util.*
 
 @Service
 class AuthenticationServiceImpl @Autowired constructor(
     private val authenticationManager: AuthenticationManager,
     private val jwtTokenUtil: JwtTokenUtil,
     private val jwtUserDetailsService: JwtUserDetailsService,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val tokenRepository: TokenRepository
 ) : AuthenticationService {
+
+    private val now: Date = Date()
 
     @Throws(CustomException::class)
     override fun authenticate(authenticationRequest: JwtRequest): JwtResponse {
@@ -51,6 +56,30 @@ class AuthenticationServiceImpl @Autowired constructor(
         val userDetails: UserDetails = jwtUserDetailsService.loadUserByUsername(authenticationRequest.email)
         val token: String = jwtTokenUtil.generateToken(userDetails)
 
+        val newToken = Token(
+            tokenId = UUID.randomUUID().toString(),
+            token = token,
+            tokenType = TokenType.BEARER,
+            expired = false,
+            revoked = false,
+            user = userDetails.username,
+            createdAt = now,
+        )
+        tokenRepository.save(newToken)
+
         return JwtResponse(token)
+    }
+
+    override fun logout(tokenStr: String) {
+        val token = tokenRepository.findByToken(tokenStr)
+        if (token != null) {
+            token.expired = true
+            token.revoked = true
+            token.updatedAt = now
+            token.deletedAt = now
+            tokenRepository.save(token)
+        } else {
+            throw CustomException("Token not found", HttpStatus.NOT_FOUND)
+        }
     }
 }

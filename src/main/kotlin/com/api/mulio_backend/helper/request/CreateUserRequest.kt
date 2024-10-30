@@ -8,6 +8,10 @@ data class CreateUserRequest(
     val username: String,
 
     @field:Email(message = "Email should be valid")
+    @field:Pattern(
+        regexp = "^[\\w.%+-]+@[\\w.-]+\\.(com|vn)$",
+        message = "Email should be valid"
+    )
     val email: String,
 
     @field:Size(min = 6, max = 18, message = "Password should be between 6 and 18 characters")

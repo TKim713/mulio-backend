@@ -6,4 +6,5 @@ import com.api.mulio_backend.helper.response.JwtResponse
 interface AuthenticationService {
     @Throws(Exception::class)
     fun authenticate(authenticationRequest: JwtRequest): JwtResponse
+    fun logout(tokenStr: String)
 }

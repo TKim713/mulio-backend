@@ -27,8 +27,9 @@ class JwtRequestFilter @Autowired constructor(
         chain: FilterChain
     ) {
         val jwtToken = getJWTFromRequest(request)
-        if (jwtToken != null && jwtTokenUtil.validateToken(jwtToken, getUserDetails(jwtToken))) {
-            val userDetails: UserDetails = getUserDetails(jwtToken)
+        val userDetails = jwtToken?.let { getUserDetails(it) }
+
+        if (jwtToken != null && userDetails != null && jwtTokenUtil.validateToken(jwtToken, userDetails)) {
             val authenticationToken = UsernamePasswordAuthenticationToken(
                 userDetails, null, userDetails.authorities
             )
