@@ -9,9 +9,9 @@ data class Cart(
     @Id
     val cartId: String,
     val userId: String,
-    val products: List<CartProduct> = listOf(),
-    val totalNumber: Int,
-    val totalPrice: Float,
+    var products: List<CartProduct> = listOf(),
+    var totalNumber: Int,
+    var totalPrice: Float,
     val createdAt: Date,
     var updatedAt: Date? = null,
     var deletedAt: Date? = null

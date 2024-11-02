@@ -1,7 +1,7 @@
 package com.api.mulio_backend.controller
 
 import com.api.mulio_backend.helper.exception.CustomException
-import com.api.mulio_backend.helper.request.CreateCartRequest
+import com.api.mulio_backend.helper.request.AddProductToCartRequest
 import com.api.mulio_backend.helper.response.CartResponse
 import com.api.mulio_backend.helper.response.ResponseObject
 import com.api.mulio_backend.service.CartService
@@ -17,9 +17,9 @@ class CartController @Autowired constructor(
 ) {
 
     @PostMapping
-    fun addToCart(@RequestBody createCartRequest: CreateCartRequest): ResponseEntity<ResponseObject<CartResponse>> {
+    fun addToCart(@RequestBody addProductToCartRequest: AddProductToCartRequest): ResponseEntity<ResponseObject<CartResponse>> {
         return try {
-            val cartResponse = cartService.addToCart(createCartRequest)
+            val cartResponse = cartService.addToCart(addProductToCartRequest)
             ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseObject(HttpStatus.OK.value(), "Product added to cart successfully", cartResponse))
         } catch (e: CustomException) {
@@ -40,6 +40,21 @@ class CartController @Autowired constructor(
         } catch (e: CustomException) {
             ResponseEntity.status(e.status)
                 .body(ResponseObject(e.status.value(), "${e.message}", null))
+        }
+    }
+
+    @PostMapping("/{userId}/checkout")
+    fun checkout(@PathVariable userId: String): ResponseEntity<ResponseObject<String>> {
+        return try {
+            cartService.checkout(userId)
+            ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseObject(HttpStatus.OK.value(), "Checkout successful", ""))
+        } catch (e: CustomException) {
+            ResponseEntity.status(e.status)
+                .body(ResponseObject(e.status.value(), "${e.message}", null))
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseObject(HttpStatus.BAD_REQUEST.value(), "Error during checkout: ${e.message}", null))
         }
     }
 }
