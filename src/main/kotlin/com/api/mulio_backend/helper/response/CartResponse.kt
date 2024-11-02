@@ -5,6 +5,3 @@ data class CartResponse(
     var totalNumber: Int = 0,
     var totalPrice: Float = 0f,
 )
-//{
-//    constructor() : this(emptyList(), 0, 0f)
-//}
