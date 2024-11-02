@@ -7,7 +7,7 @@ import java.util.*
 @Document(collection = "product")
 data class Product(
     @Id
-    val productId: String,
+    var productId: String,
     val productName: String,
     val price: Float,
     val description: String,
