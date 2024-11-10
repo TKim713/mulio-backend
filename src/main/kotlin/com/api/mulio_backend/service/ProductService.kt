@@ -1,25 +1,15 @@
 package com.api.mulio_backend.service
 
 import com.api.mulio_backend.model.Product
-import com.api.mulio_backend.repository.ProductRepository
-import org.springframework.stereotype.Service
+import org.bson.types.ObjectId
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 
-@Service
-class ProductService(private val productRepository: ProductRepository) {
-
-    fun addProduct(product: Product): Product {
-        return productRepository.save(product)
-    }
-
-    fun updateProduct(id: Long, product: Product): Product {
-        val existingProduct = productRepository.findById(id.toString()).orElseThrow {
-            throw IllegalArgumentException("Product with id $id not found")
-        }
-        // Update fields of existingProduct with values from product
-        return productRepository.save(existingProduct)
-    }
-
-    fun deleteProduct(id: Long) {
-        productRepository.deleteById(id.toString())
-    }
+interface ProductService {
+    fun createProduct(product: Product): Product
+    fun getProductById(productId: ObjectId): Product?
+    fun updateProduct(productId: String, product: Product): Product?
+    fun deleteProduct(productId: ObjectId): Boolean
+    fun getAllProducts(): List<Product>
+    fun getProducts(pageable: Pageable): Page<Product> // New method for pagination
 }
