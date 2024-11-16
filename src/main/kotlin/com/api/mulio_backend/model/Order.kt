@@ -11,7 +11,7 @@ data class Order(
     val userId: String,
     val totalPrice: Float,
     val orderDate: Date,
-    val orderProduct: List<OrderProduct>,
+    val orderProduct: List<CartProduct>,
     val createdAt: Date,
     var updatedAt: Date? = null,
     var deletedAt: Date? = null

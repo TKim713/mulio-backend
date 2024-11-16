@@ -2,6 +2,7 @@ package com.api.mulio_backend.controller
 
 import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.AddProductToCartRequest
+import com.api.mulio_backend.helper.request.CheckoutRequest
 import com.api.mulio_backend.helper.response.CartResponse
 import com.api.mulio_backend.helper.response.ResponseObject
 import com.api.mulio_backend.service.CartService
@@ -16,10 +17,14 @@ class CartController @Autowired constructor(
     private val cartService: CartService
 ) {
 
-    @PostMapping
-    fun addToCart(@RequestBody addProductToCartRequest: AddProductToCartRequest): ResponseEntity<ResponseObject<CartResponse>> {
+    @PostMapping("/{cartId}")
+    fun addToCart(
+        @PathVariable cartId: String,
+        @RequestBody addProductToCartRequest: AddProductToCartRequest
+    ): ResponseEntity<ResponseObject<CartResponse>> {
         return try {
-            val cartResponse = cartService.addToCart(addProductToCartRequest)
+            // Pass the cartId to the service method
+            val cartResponse = cartService.addToCart(cartId, addProductToCartRequest)
             ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseObject(HttpStatus.OK.value(), "Product added to cart successfully", cartResponse))
         } catch (e: CustomException) {
@@ -43,15 +48,16 @@ class CartController @Autowired constructor(
         }
     }
 
-    @PostMapping("/{userId}/checkout")
-    fun checkout(@PathVariable userId: String): ResponseEntity<ResponseObject<String>> {
+    @PostMapping("/{cartId}/checkout")
+    fun checkout(@PathVariable cartId: String, @RequestBody checkoutRequest: CheckoutRequest): ResponseEntity<ResponseObject<String>> {
         return try {
-            cartService.checkout(userId)
+            cartService.checkout(cartId, checkoutRequest)
+
             ResponseEntity.status(HttpStatus.OK)
-                .body(ResponseObject(HttpStatus.OK.value(), "Checkout successful", ""))
+                .body(ResponseObject(HttpStatus.OK.value(), "Checkout successfully", ""))
         } catch (e: CustomException) {
             ResponseEntity.status(e.status)
-                .body(ResponseObject(e.status.value(), "${e.message}", null))
+                .body(ResponseObject(e.status.value(), e.message ?: "Custom error occurred", null))
         } catch (e: Exception) {
             ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ResponseObject(HttpStatus.BAD_REQUEST.value(), "Error during checkout: ${e.message}", null))
