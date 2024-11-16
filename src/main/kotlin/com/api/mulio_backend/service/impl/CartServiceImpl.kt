@@ -49,7 +49,7 @@ class CartServiceImpl @Autowired constructor(
                     totalAmount = cartRequest.amount,
                     totalPrice = cartRequest.amount * product.price
                 )
-            )
+            }
         }
 
         val totalNumber = updatedProducts.sumOf { it.totalAmount }
@@ -114,7 +114,7 @@ class CartServiceImpl @Autowired constructor(
             products = updatedProducts,
             totalNumber = totalNumber,
             totalPrice = totalPrice,
-            updatedAt = now
+            updatedAt = Date()
         )
 
         val savedCart = cartRepository.save(updatedCart)
