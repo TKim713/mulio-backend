@@ -2,11 +2,14 @@ package com.api.mulio_backend.service.impl
 
 import com.api.mulio_backend.config.MapData
 import com.api.mulio_backend.helper.exception.CustomException
-import com.api.mulio_backend.helper.request.CreateCartRequest
+import com.api.mulio_backend.helper.request.CheckoutRequest
+import com.api.mulio_backend.helper.request.CartRequest
 import com.api.mulio_backend.helper.response.CartProductResponse
 import com.api.mulio_backend.helper.response.CartResponse
 import com.api.mulio_backend.model.CartProduct
+import com.api.mulio_backend.model.Order
 import com.api.mulio_backend.repository.CartRepository
+import com.api.mulio_backend.repository.OrderRepository
 import com.api.mulio_backend.repository.ProductRepository
 import com.api.mulio_backend.service.CartService
 import org.springframework.beans.factory.annotation.Autowired
@@ -18,85 +21,232 @@ import java.util.*
 class CartServiceImpl @Autowired constructor(
     private val productRepository: ProductRepository,
     private val cartRepository: CartRepository,
+    private val orderRepository: OrderRepository,
     private val mapData: MapData
 ) : CartService {
 
     private val now: Date = Date()
 
-    // Hàm thêm sản phẩm vào giỏ hàng
-    override fun addToCart(createCartRequest: CreateCartRequest): CartResponse {
-        // Kiểm tra sản phẩm có tồn tại không
-        val product = productRepository.findById(createCartRequest.productId).orElseThrow {
+    override fun addToCart(cartId: String, productId: String, cartRequest: CartRequest): CartResponse {
+        val existingCart = cartRepository.findById(cartId).orElseThrow {
+            CustomException("Cart not found", HttpStatus.NOT_FOUND)
+        }
+
+        val product = productRepository.findById(productId).orElseThrow {
             CustomException("Product not found", HttpStatus.NOT_FOUND)
         }
 
-        // Lấy giỏ hàng của người dùng
-        val existingCart = cartRepository.findByUserId(createCartRequest.userId)
+        val updatedProducts = existingCart.products.toMutableList()
 
-        // Giỏ hàng mới hoặc đã tồn tại
-        val updatedProducts = existingCart?.products?.toMutableList() ?: mutableListOf()
-
-        // Kiểm tra xem sản phẩm đã tồn tại trong giỏ hàng chưa
-        val existingItem = updatedProducts.find { it.productId == createCartRequest.productId }
+        val existingItem = updatedProducts.find { it.productId == productId }
         if (existingItem != null) {
-            // Nếu đã có, cập nhật số lượng sản phẩm
-            existingItem.amount += createCartRequest.amount
+            existingItem.totalAmount += cartRequest.amount
+            existingItem.totalPrice = existingItem.totalAmount * product.price
         } else {
-            // Nếu chưa có, thêm sản phẩm mới vào danh sách
             updatedProducts.add(
                 CartProduct(
-                    cartProductId = UUID.randomUUID().toString(),
-                    userId = createCartRequest.userId,
-                    productId = createCartRequest.productId,
-                    amount = createCartRequest.amount
+                    productId = productId,
+                    totalAmount = cartRequest.amount,
+                    totalPrice = cartRequest.amount * product.price
                 )
             )
         }
 
-        // Cập nhật lại tổng số lượng và tổng giá
-        val totalNumber = updatedProducts.sumOf { it.amount }
-        val totalPrice = updatedProducts.fold(0f) { acc, item ->
-            acc + (product.price * item.amount)
-        }
+        val totalNumber = updatedProducts.sumOf { it.totalAmount }
+        val totalPrice = updatedProducts.fold(0f) { acc, item -> acc + item.totalPrice }
 
-        // Cập nhật giỏ hàng
-        val updatedCart = existingCart?.copy(
+        val updatedCart = existingCart.copy(
             products = updatedProducts,
             totalNumber = totalNumber,
             totalPrice = totalPrice,
             updatedAt = now
         )
 
-        // Lưu giỏ hàng đã cập nhật
-        val savedCart = updatedCart?.let { cartRepository.save(it) }
+        val savedCart = cartRepository.save(updatedCart)
 
-        // Tạo List<CartProductResponse> từ List<CartProduct>
-        val cartProductResponses = savedCart?.products?.map { cartProduct ->
-            val productDetails = productRepository.findById(cartProduct.productId).orElse(null)
-            CartProductResponse(
-                productName = productDetails?.productName,
-                price = productDetails?.price,
-                description = productDetails?.description,
-                size = productDetails?.size,
-                color = productDetails?.color,
-                amount = cartProduct.amount,
-                productType = productDetails?.productType,
-                image = productDetails?.image
-            )
-        }
+        val cartProductResponses = mapToCartProductResponse(savedCart.products)
 
-        val cartResponse = mapData.mapOne(savedCart, CartResponse::class.java)
-        if (cartProductResponses != null) {
-            cartResponse.products = cartProductResponses
-        }
+        val response = mapData.mapOne(savedCart, CartResponse::class.java)
+        response.products = cartProductResponses
 
-        return cartResponse
+        return response
     }
 
-    // Hàm lấy tất cả sản phẩm trong giỏ hàng
     override fun getCartByUserId(userId: String): CartResponse {
         val existingCart = cartRepository.findByUserId(userId)
-            ?: throw CustomException("User cart not found", HttpStatus.NOT_FOUND)
-        return mapData.mapOne(existingCart, CartResponse::class.java)
+            ?: throw CustomException("Cart not found for user: $userId", HttpStatus.NOT_FOUND)
+
+        val productResponses = mapToCartProductResponse(existingCart.products)
+
+        val response = mapData.mapOne(existingCart, CartResponse::class.java)
+        response.products = productResponses
+
+        return response
+    }
+
+    override fun updateProductInCart(cartId: String, productId: String, cartRequest: CartRequest): CartResponse {
+        val existingCart = cartRepository.findById(cartId).orElseThrow {
+            CustomException("Cart not found", HttpStatus.NOT_FOUND)
+        }
+
+        val product = productRepository.findById(productId).orElseThrow {
+            CustomException("Product not found", HttpStatus.NOT_FOUND)
+        }
+
+        val updatedProducts = existingCart.products.toMutableList()
+
+        val existingItem = updatedProducts.find { it.productId == productId }
+        if (existingItem != null) {
+            if (cartRequest.amount > 0) {
+                existingItem.totalAmount = cartRequest.amount
+                existingItem.totalPrice = existingItem.totalAmount * product.price
+            } else {
+                updatedProducts.remove(existingItem)
+            }
+        } else {
+            throw CustomException("Product not found in the cart", HttpStatus.NOT_FOUND)
+        }
+
+        val totalNumber = updatedProducts.sumOf { it.totalAmount }
+        val totalPrice = updatedProducts.fold(0f) { acc, item -> acc + item.totalPrice }
+
+        val updatedCart = existingCart.copy(
+            products = updatedProducts,
+            totalNumber = totalNumber,
+            totalPrice = totalPrice,
+            updatedAt = now
+        )
+
+        val savedCart = cartRepository.save(updatedCart)
+
+        val cartProductResponses = mapToCartProductResponse(savedCart.products)
+
+        val response = mapData.mapOne(savedCart, CartResponse::class.java)
+        response.products = cartProductResponses
+
+        return response
+    }
+
+    override fun deleteProductFromCart(cartId: String, productId: String): CartResponse {
+        val existingCart = cartRepository.findById(cartId).orElseThrow {
+            CustomException("Cart not found", HttpStatus.NOT_FOUND)
+        }
+
+        val updatedProducts = existingCart.products.toMutableList()
+
+        val existingItem = updatedProducts.find { it.productId == productId }
+        if (existingItem != null) {
+            updatedProducts.remove(existingItem)
+        } else {
+            throw CustomException("Product not found in the cart", HttpStatus.NOT_FOUND)
+        }
+
+        val totalNumber = updatedProducts.sumOf { it.totalAmount }
+        val totalPrice = updatedProducts.fold(0f) { acc, item -> acc + item.totalPrice }
+
+        val updatedCart = existingCart.copy(
+            products = updatedProducts,
+            totalNumber = totalNumber,
+            totalPrice = totalPrice,
+            updatedAt = Date()
+        )
+
+        val savedCart = cartRepository.save(updatedCart)
+
+        val cartProductResponses = mapToCartProductResponse(savedCart.products)
+
+        val response = mapData.mapOne(savedCart, CartResponse::class.java)
+        response.products = cartProductResponses
+
+        return response
+    }
+
+    override fun checkout(cartId: String, checkoutRequest: CheckoutRequest): Order {
+        val existingCart = cartRepository.findById(cartId).orElseThrow {
+            CustomException("Cart not found", HttpStatus.NOT_FOUND)
+        }
+
+        val checkoutProducts = mutableListOf<CartProduct>()
+
+        existingCart.products.forEach { cartProduct ->
+            val itemToCheckout = checkoutRequest.itemsToCheckout.find { it.productId == cartProduct.productId }
+
+            if (itemToCheckout != null) {
+                if (itemToCheckout.totalAmount > cartProduct.totalAmount) {
+                    throw CustomException(
+                        "Requested amount for product ${cartProduct.productId} exceeds available quantity",
+                        HttpStatus.BAD_REQUEST
+                    )
+                }
+
+                cartProduct.totalAmount -= itemToCheckout.totalAmount
+
+                checkoutProducts.add(
+                    CartProduct(
+                        productId = cartProduct.productId,
+                        totalPrice = cartProduct.totalPrice,
+                        totalAmount = itemToCheckout.totalAmount
+                    )
+                )
+
+                val product = productRepository.findById(cartProduct.productId).orElseThrow {
+                    CustomException("Product not found", HttpStatus.NOT_FOUND)
+                }
+
+                if (product.amount < itemToCheckout.totalAmount) {
+                    throw CustomException(
+                        "Not enough stock for product ${product.productId}",
+                        HttpStatus.BAD_REQUEST
+                    )
+                }
+
+                product.amount -= itemToCheckout.totalAmount
+                productRepository.save(product)
+            }
+        }
+
+        val remainingProducts = existingCart.products.filter { it.totalAmount > 0 }
+        existingCart.products = remainingProducts
+
+        val totalPrice = checkoutProducts.fold(0f) { acc, item -> acc + item.totalPrice }
+
+        if (checkoutRequest.totalPrice != totalPrice) {
+            throw CustomException("Total price mismatch", HttpStatus.BAD_REQUEST)
+        }
+
+        val order = Order(
+            orderId = UUID.randomUUID().toString(),
+            userId = existingCart.userId,
+            totalPrice = totalPrice,
+            orderDate = Date(),
+            orderProduct = checkoutProducts,
+            createdAt = Date()
+        )
+        orderRepository.save(order)
+
+        existingCart.totalNumber = remainingProducts.sumOf { it.totalAmount }
+        existingCart.totalPrice = remainingProducts.fold(0f) { acc, item -> acc + (item.totalPrice * item.totalAmount) }
+        existingCart.updatedAt = Date()
+        cartRepository.save(existingCart)
+
+        return order
+    }
+
+    fun mapToCartProductResponse(cartProducts: List<CartProduct>): List<CartProductResponse> {
+        return cartProducts.map { cartProduct ->
+            val productDetails = productRepository.findById(cartProduct.productId).orElse(null)
+            CartProductResponse(
+                productId = productDetails.productId.toString(),
+                productName = productDetails.productName,
+                price = productDetails.price,
+                description = productDetails?.description,
+                size = productDetails.size,
+                color = productDetails.color,
+                amount = cartProduct.totalAmount,
+                productType = productDetails.productType,
+                image = productDetails.image,
+                totalPrice = cartProduct.totalPrice
+            )
+        }
     }
 }
