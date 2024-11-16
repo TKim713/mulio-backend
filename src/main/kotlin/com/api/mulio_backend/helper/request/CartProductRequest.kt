@@ -1,6 +1,6 @@
-package com.api.mulio_backend.model
+package com.api.mulio_backend.helper.request
 
-data class CartProduct(
+data class CartProductRequest(
     val productId: String,
     var totalPrice: Float,
     var totalAmount: Int

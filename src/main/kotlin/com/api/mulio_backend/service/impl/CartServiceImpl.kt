@@ -3,12 +3,11 @@ package com.api.mulio_backend.service.impl
 import com.api.mulio_backend.config.MapData
 import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.CheckoutRequest
-import com.api.mulio_backend.helper.request.AddProductToCartRequest
+import com.api.mulio_backend.helper.request.CartRequest
 import com.api.mulio_backend.helper.response.CartProductResponse
 import com.api.mulio_backend.helper.response.CartResponse
 import com.api.mulio_backend.model.CartProduct
 import com.api.mulio_backend.model.Order
-import com.api.mulio_backend.model.OrderProduct
 import com.api.mulio_backend.repository.CartRepository
 import com.api.mulio_backend.repository.OrderRepository
 import com.api.mulio_backend.repository.ProductRepository
@@ -28,74 +27,138 @@ class CartServiceImpl @Autowired constructor(
 
     private val now: Date = Date()
 
-    override fun addToCart(cartId: String, addProductToCartRequest: AddProductToCartRequest): CartResponse {
+    override fun addToCart(cartId: String, productId: String, cartRequest: CartRequest): CartResponse {
         val existingCart = cartRepository.findById(cartId).orElseThrow {
             CustomException("Cart not found", HttpStatus.NOT_FOUND)
         }
 
-        val product = productRepository.findByProductNameAndColorAndSize(
-            addProductToCartRequest.productName,
-            addProductToCartRequest.color,
-            addProductToCartRequest.size
-        ) ?: throw CustomException("Product not found", HttpStatus.NOT_FOUND)
+        val product = productRepository.findById(productId).orElseThrow {
+            CustomException("Product not found", HttpStatus.NOT_FOUND)
+        }
 
-        val updatedProducts = existingCart?.products?.toMutableList() ?: mutableListOf()
+        val updatedProducts = existingCart.products.toMutableList()
 
-        val existingItem = updatedProducts.find { it.productId == product.productId.toString() }
+        val existingItem = updatedProducts.find { it.productId == productId }
         if (existingItem != null) {
-            existingItem.amount += addProductToCartRequest.amount
+            existingItem.totalAmount += cartRequest.amount
+            existingItem.totalPrice = existingItem.totalAmount * product.price
         } else {
-            if (existingCart != null) {
-                updatedProducts.add(
-                    CartProduct(
-                        productId = product.productId.toString(),
-                        amount = addProductToCartRequest.amount,
-                        price = product.price
-                    )
+            updatedProducts.add(
+                CartProduct(
+                    productId = productId,
+                    totalAmount = cartRequest.amount,
+                    totalPrice = cartRequest.amount * product.price
                 )
+            )
+        }
+
+        val totalNumber = updatedProducts.sumOf { it.totalAmount }
+        val totalPrice = updatedProducts.fold(0f) { acc, item -> acc + item.totalPrice }
+
+        val updatedCart = existingCart.copy(
+            products = updatedProducts,
+            totalNumber = totalNumber,
+            totalPrice = totalPrice,
+            updatedAt = now
+        )
+
+        val savedCart = cartRepository.save(updatedCart)
+
+        val cartProductResponses = mapToCartProductResponse(savedCart.products)
+
+        val response = mapData.mapOne(savedCart, CartResponse::class.java)
+        response.products = cartProductResponses
+
+        return response
+    }
+
+    override fun getCartByUserId(userId: String): CartResponse {
+        val existingCart = cartRepository.findByUserId(userId)
+            ?: throw CustomException("Cart not found for user: $userId", HttpStatus.NOT_FOUND)
+
+        val productResponses = mapToCartProductResponse(existingCart.products)
+
+        val response = mapData.mapOne(existingCart, CartResponse::class.java)
+        response.products = productResponses
+
+        return response
+    }
+
+    override fun updateProductInCart(cartId: String, productId: String, cartRequest: CartRequest): CartResponse {
+        val existingCart = cartRepository.findById(cartId).orElseThrow {
+            CustomException("Cart not found", HttpStatus.NOT_FOUND)
+        }
+
+        val product = productRepository.findById(productId).orElseThrow {
+            CustomException("Product not found", HttpStatus.NOT_FOUND)
+        }
+
+        val updatedProducts = existingCart.products.toMutableList()
+
+        val existingItem = updatedProducts.find { it.productId == productId }
+        if (existingItem != null) {
+            if (cartRequest.amount > 0) {
+                existingItem.totalAmount = cartRequest.amount
+                existingItem.totalPrice = existingItem.totalAmount * product.price
+            } else {
+                updatedProducts.remove(existingItem)
             }
+        } else {
+            throw CustomException("Product not found in the cart", HttpStatus.NOT_FOUND)
         }
 
-        val totalNumber = updatedProducts.sumOf { it.amount }
-        val totalPrice = updatedProducts.fold(0f) { acc, item ->
-            acc + (item.price * item.amount)
+        val totalNumber = updatedProducts.sumOf { it.totalAmount }
+        val totalPrice = updatedProducts.fold(0f) { acc, item -> acc + item.totalPrice }
+
+        val updatedCart = existingCart.copy(
+            products = updatedProducts,
+            totalNumber = totalNumber,
+            totalPrice = totalPrice,
+            updatedAt = now
+        )
+
+        val savedCart = cartRepository.save(updatedCart)
+
+        val cartProductResponses = mapToCartProductResponse(savedCart.products)
+
+        val response = mapData.mapOne(savedCart, CartResponse::class.java)
+        response.products = cartProductResponses
+
+        return response
+    }
+
+    override fun deleteProductFromCart(cartId: String, productId: String): CartResponse {
+        val existingCart = cartRepository.findById(cartId).orElseThrow {
+            CustomException("Cart not found", HttpStatus.NOT_FOUND)
         }
 
-        val updatedCart = existingCart?.copy(
+        val updatedProducts = existingCart.products.toMutableList()
+
+        val existingItem = updatedProducts.find { it.productId == productId }
+        if (existingItem != null) {
+            updatedProducts.remove(existingItem)
+        } else {
+            throw CustomException("Product not found in the cart", HttpStatus.NOT_FOUND)
+        }
+
+        val totalNumber = updatedProducts.sumOf { it.totalAmount }
+        val totalPrice = updatedProducts.fold(0f) { acc, item -> acc + item.totalPrice }
+
+        val updatedCart = existingCart.copy(
             products = updatedProducts,
             totalNumber = totalNumber,
             totalPrice = totalPrice,
             updatedAt = Date()
         )
 
-        val savedCart = updatedCart?.let { cartRepository.save(it) }
+        val savedCart = cartRepository.save(updatedCart)
 
-        val cartProductResponses = savedCart?.products?.map { cartProduct ->
-            val productDetails = productRepository.findById(cartProduct.productId).orElse(null)
-            CartProductResponse(
-                productName = productDetails?.productName,
-                price = productDetails?.price,
-                description = productDetails?.description,
-                size = productDetails?.size,
-                color = productDetails?.color,
-                amount = cartProduct.amount,
-                productType = productDetails?.productType,
-                image = productDetails?.image
-            )
-        }
+        val cartProductResponses = mapToCartProductResponse(savedCart.products)
 
-        val cartResponse = mapData.mapOne(savedCart, CartResponse::class.java)
-        if (cartProductResponses != null) {
-            cartResponse.products = cartProductResponses
-        }
+        val response = mapData.mapOne(savedCart, CartResponse::class.java)
+        response.products = cartProductResponses
 
-        return cartResponse
-    }
-
-    override fun getCartByUserId(userId: String): CartResponse {
-        val existingCart = cartRepository.findByUserId(userId)
-            ?: throw CustomException("User cart not found", HttpStatus.NOT_FOUND)
-        return mapData.mapOne(existingCart, CartResponse::class.java)
+        return response
     }
 
     override fun checkout(cartId: String, checkoutRequest: CheckoutRequest): Order {
@@ -104,22 +167,25 @@ class CartServiceImpl @Autowired constructor(
         }
 
         val checkoutProducts = mutableListOf<CartProduct>()
+
         existingCart.products.forEach { cartProduct ->
             val itemToCheckout = checkoutRequest.itemsToCheckout.find { it.productId == cartProduct.productId }
+
             if (itemToCheckout != null) {
-                if (itemToCheckout.amount > cartProduct.amount) {
+                if (itemToCheckout.totalAmount > cartProduct.totalAmount) {
                     throw CustomException(
                         "Requested amount for product ${cartProduct.productId} exceeds available quantity",
                         HttpStatus.BAD_REQUEST
                     )
                 }
-                cartProduct.amount -= itemToCheckout.amount
+
+                cartProduct.totalAmount -= itemToCheckout.totalAmount
 
                 checkoutProducts.add(
                     CartProduct(
                         productId = cartProduct.productId,
-                        price = cartProduct.price,
-                        amount = itemToCheckout.amount
+                        totalPrice = cartProduct.totalPrice,
+                        totalAmount = itemToCheckout.totalAmount
                     )
                 )
 
@@ -127,24 +193,22 @@ class CartServiceImpl @Autowired constructor(
                     CustomException("Product not found", HttpStatus.NOT_FOUND)
                 }
 
-                if (product.amount < itemToCheckout.amount) {
+                if (product.amount < itemToCheckout.totalAmount) {
                     throw CustomException(
                         "Not enough stock for product ${product.productId}",
                         HttpStatus.BAD_REQUEST
                     )
                 }
 
-                product.amount -= itemToCheckout.amount
+                product.amount -= itemToCheckout.totalAmount
                 productRepository.save(product)
             }
         }
 
-        val remainingProducts = existingCart.products.filter { it.amount > 0 }
+        val remainingProducts = existingCart.products.filter { it.totalAmount > 0 }
         existingCart.products = remainingProducts
 
-        val totalPrice = checkoutProducts.fold(0f) { acc, item ->
-            acc + (item.price * item.amount)
-        }
+        val totalPrice = checkoutProducts.fold(0f) { acc, item -> acc + item.totalPrice }
 
         if (checkoutRequest.totalPrice != totalPrice) {
             throw CustomException("Total price mismatch", HttpStatus.BAD_REQUEST)
@@ -158,14 +222,31 @@ class CartServiceImpl @Autowired constructor(
             orderProduct = checkoutProducts,
             createdAt = Date()
         )
-
         orderRepository.save(order)
 
-        existingCart.totalNumber = remainingProducts.sumOf { it.amount }
-        existingCart.totalPrice = remainingProducts.fold(0f) { acc, item -> acc + (item.price * item.amount) }
+        existingCart.totalNumber = remainingProducts.sumOf { it.totalAmount }
+        existingCart.totalPrice = remainingProducts.fold(0f) { acc, item -> acc + (item.totalPrice * item.totalAmount) }
         existingCart.updatedAt = Date()
         cartRepository.save(existingCart)
 
         return order
+    }
+
+    fun mapToCartProductResponse(cartProducts: List<CartProduct>): List<CartProductResponse> {
+        return cartProducts.map { cartProduct ->
+            val productDetails = productRepository.findById(cartProduct.productId).orElse(null)
+            CartProductResponse(
+                productId = productDetails.productId.toString(),
+                productName = productDetails.productName,
+                price = productDetails.price,
+                description = productDetails?.description,
+                size = productDetails.size,
+                color = productDetails.color,
+                amount = cartProduct.totalAmount,
+                productType = productDetails.productType,
+                image = productDetails.image,
+                totalPrice = cartProduct.totalPrice
+            )
+        }
     }
 }
