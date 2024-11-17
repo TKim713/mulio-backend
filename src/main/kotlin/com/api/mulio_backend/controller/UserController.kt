@@ -4,9 +4,10 @@ import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.response.CartResponse
 import com.api.mulio_backend.helper.response.OrderResponse
 import com.api.mulio_backend.helper.response.ResponseObject
-import com.api.mulio_backend.model.Order
+import com.api.mulio_backend.helper.response.UserResponse
 import com.api.mulio_backend.service.CartService
 import com.api.mulio_backend.service.OrderService
+import com.api.mulio_backend.service.UserService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.domain.Page
 import org.springframework.http.HttpStatus
@@ -16,9 +17,27 @@ import org.springframework.web.bind.annotation.*
 @RestController
 @RequestMapping("/api/users")
 class UserController @Autowired constructor (
+    private val userService: UserService,
     private val cartService: CartService,
     private val orderService: OrderService
 ) {
+
+    @GetMapping
+    fun getUser(@RequestHeader("Authorization") token: String): ResponseEntity<ResponseObject<UserResponse>> {
+        val jwtToken = token.replace("Bearer ", "")
+
+        return try {
+            val userResponse = userService.getUser(jwtToken)
+
+            ResponseEntity.ok(ResponseObject(HttpStatus.OK.value(), "User details retrieved successfully", userResponse))
+        } catch (e: CustomException) {
+            ResponseEntity.status(e.status)
+                .body(ResponseObject(e.status.value(), e.message ?: "Error retrieving user details", null))
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseObject(HttpStatus.BAD_REQUEST.value(), "An unexpected error occurred: ${e.message}", null))
+        }
+    }
 
     @GetMapping("{userId}/cart")
     fun getCartByUserId(@PathVariable userId: String): ResponseEntity<ResponseObject<CartResponse>> {
