@@ -83,4 +83,21 @@ class AuthenticationController @Autowired constructor(
                 .body(ResponseObject(HttpStatus.BAD_REQUEST.value(), "An unexpected error occurred: ${e.message}", null))
         }
     }
+
+    @PostMapping("/refresh-token")
+    fun refreshToken(@RequestBody refreshTokenRequest: Map<String, String>): ResponseEntity<ResponseObject<JwtResponse>> {
+        return try {
+            val refreshToken = refreshTokenRequest["refreshToken"]
+                ?: throw CustomException("Refresh token is required", HttpStatus.BAD_REQUEST)
+
+            val jwtResponse = authenticationService.refreshToken(refreshToken)
+            ResponseEntity.ok(ResponseObject(HttpStatus.OK.value(), "Token refreshed successfully", jwtResponse))
+        } catch (e: CustomException) {
+            ResponseEntity.status(e.status)
+                .body(ResponseObject(e.status.value(), e.message ?: "Error refreshing token", null))
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseObject(HttpStatus.BAD_REQUEST.value(), "Unexpected error: ${e.message}", null))
+        }
+    }
 }

@@ -7,4 +7,5 @@ interface AuthenticationService {
     @Throws(Exception::class)
     fun authenticate(authenticationRequest: JwtRequest): JwtResponse
     fun logout(tokenStr: String)
+    fun refreshToken(refreshToken: String): JwtResponse
 }
