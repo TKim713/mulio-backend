@@ -54,7 +54,7 @@ class JwtTokenUtil : Serializable {
     }
 
     private fun isTokenRevoked(token: String): Boolean {
-        val savedToken = tokenRepository.findByToken(token)
+        val savedToken = tokenRepository.findByAccessToken(token)
         return savedToken != null && savedToken.revoked
     }
 

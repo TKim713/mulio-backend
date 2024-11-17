@@ -1,13 +1,14 @@
 package com.api.mulio_backend.controller
 
 import com.api.mulio_backend.helper.exception.CustomException
-import com.api.mulio_backend.helper.response.CartResponse
-import com.api.mulio_backend.helper.response.OrderResponse
-import com.api.mulio_backend.helper.response.ResponseObject
-import com.api.mulio_backend.helper.response.UserResponse
+import com.api.mulio_backend.helper.request.ChangePasswordRequest
+import com.api.mulio_backend.helper.request.CustomerRequest
+import com.api.mulio_backend.helper.response.*
 import com.api.mulio_backend.service.CartService
+import com.api.mulio_backend.service.CustomerService
 import com.api.mulio_backend.service.OrderService
 import com.api.mulio_backend.service.UserService
+import jakarta.validation.Valid
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.domain.Page
 import org.springframework.http.HttpStatus
@@ -19,7 +20,8 @@ import org.springframework.web.bind.annotation.*
 class UserController @Autowired constructor (
     private val userService: UserService,
     private val cartService: CartService,
-    private val orderService: OrderService
+    private val orderService: OrderService,
+    private val customerService: CustomerService
 ) {
 
     @GetMapping
@@ -67,6 +69,47 @@ class UserController @Autowired constructor (
         } catch (e: Exception) {
             ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ResponseObject(HttpStatus.BAD_REQUEST.value(), "Error retrieving orders: ${e.message}", null))
+        }
+    }
+
+    @PutMapping("/{userId}/update-info")
+    fun updateUserInfo(
+        @PathVariable userId: String,
+        @Valid @RequestBody customerRequest: CustomerRequest
+    ): ResponseEntity<ResponseObject<CustomerResponse>> {
+        return try {
+            val updatedCustomerResponse = customerService.updateCustomerInfoByUserId(userId, customerRequest)
+            ResponseEntity.status(HttpStatus.OK)
+                .body(ResponseObject(HttpStatus.OK.value(), "Customer information updated successfully", updatedCustomerResponse))
+        } catch (e: CustomException) {
+            ResponseEntity.status(e.status)
+                .body(ResponseObject(e.status.value(), e.message ?: "Error updating customer information", null))
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseObject(HttpStatus.BAD_REQUEST.value(), "Unexpected error: ${e.message}", null))
+        }
+    }
+
+    @PostMapping("/{userId}/change-password")
+    fun changePassword(
+        @PathVariable userId: String,
+        @Valid @RequestBody changePasswordRequest: ChangePasswordRequest
+    ): ResponseEntity<ResponseObject<String>> {
+        return try {
+            val success = userService.changePassword(userId, changePasswordRequest)
+            if (success) {
+                ResponseEntity.status(HttpStatus.OK)
+                    .body(ResponseObject(HttpStatus.OK.value(), "Password changed successfully", "Success"))
+            } else {
+                ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ResponseObject(HttpStatus.BAD_REQUEST.value(), "Failed to change password", null))
+            }
+        } catch (e: CustomException) {
+            ResponseEntity.status(e.status)
+                .body(ResponseObject(e.status.value(), e.message ?: "Error changing password", null))
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseObject(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Unexpected error: ${e.message}", null))
         }
     }
 }

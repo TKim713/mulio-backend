@@ -6,6 +6,7 @@ import com.api.mulio_backend.config.MapData
 import com.api.mulio_backend.helper.enums.Role
 import com.api.mulio_backend.helper.enums.TokenType
 import com.api.mulio_backend.helper.exception.CustomException
+import com.api.mulio_backend.helper.request.ChangePasswordRequest
 import com.api.mulio_backend.helper.request.CreateUserRequest
 import com.api.mulio_backend.helper.response.CartResponse
 import com.api.mulio_backend.helper.response.CreateUserResponse
@@ -64,7 +65,7 @@ class UserServiceImpl @Autowired constructor(
         val tokenStr = UUID.randomUUID().toString()
         val token = Token(
             tokenId = UUID.randomUUID().toString(),
-            token = tokenStr,
+            accessToken = tokenStr,
             expired = false,
             revoked = false,
             user = savedUser.email,
@@ -76,13 +77,13 @@ class UserServiceImpl @Autowired constructor(
         emailService.sendEmail(savedUser.email, "Xác Thực Email của Bạn cho Mulio!", tokenStr, savedUser.username)
 
         val response = mapData.mapOne(savedUser, CreateUserResponse::class.java)
-        response.token = savedToken.token
+        response.token = savedToken.accessToken
         return response
     }
 
     // Method xác thực email
     override fun verifyEmail(tokenStr: String): String {
-        val token = tokenRepository.findByToken(tokenStr)
+        val token = tokenRepository.findByAccessToken(tokenStr)
         return if (token != null && !token.expired && !token.revoked) {
             val user = userRepository.findByEmail(token.user)
 
@@ -117,10 +118,10 @@ class UserServiceImpl @Autowired constructor(
     }
 
     override fun getUser(tokenStr: String): UserResponse {
-        val token = tokenRepository.findByToken(tokenStr)
+        val token = tokenRepository.findByAccessToken(tokenStr)
 
         if (token != null) {
-            val email = jwtTokenUtil.getUsernameFromToken(token.token)
+            val email = jwtTokenUtil.getUsernameFromToken(token.accessToken)
 
             val user = userRepository.findByEmail(email)
 
@@ -138,5 +139,25 @@ class UserServiceImpl @Autowired constructor(
         } else {
             throw CustomException("Token not found", HttpStatus.NOT_FOUND)
         }
+    }
+
+    override fun changePassword(userId: String, changePasswordRequest: ChangePasswordRequest): Boolean {
+        val user = userRepository.findById(userId)
+            .orElseThrow { CustomException("User not found", HttpStatus.NOT_FOUND) }
+
+        if (!passwordEncoder.matches(changePasswordRequest.oldPassword, user.password)) {
+            throw CustomException("Old password is incorrect", HttpStatus.BAD_REQUEST)
+        }
+
+        if (changePasswordRequest.oldPassword == changePasswordRequest.newPassword) {
+            throw CustomException("New password cannot be the same as the old password", HttpStatus.BAD_REQUEST)
+        }
+
+        val encodedNewPassword = passwordEncoder.encode(changePasswordRequest.newPassword)
+
+        user.password = encodedNewPassword
+        userRepository.save(user)
+
+        return true
     }
 }

@@ -59,7 +59,7 @@ class AuthenticationServiceImpl @Autowired constructor(
 
         val newToken = Token(
             tokenId = UUID.randomUUID().toString(),
-            token = accessToken,
+            accessToken = accessToken,
             refreshToken = refreshToken,
             tokenType = TokenType.BEARER,
             expired = false,
@@ -73,7 +73,7 @@ class AuthenticationServiceImpl @Autowired constructor(
     }
 
     override fun logout(tokenStr: String) {
-        val token = tokenRepository.findByToken(tokenStr)
+        val token = tokenRepository.findByAccessToken(tokenStr)
         if (token != null) {
             token.expired = true
             token.revoked = true
@@ -102,7 +102,7 @@ class AuthenticationServiceImpl @Autowired constructor(
         val userDetails: UserDetails = jwtUserDetailsService.loadUserByUsername(token.user)
         val newAccessToken = jwtTokenUtil.generateToken(userDetails)
 
-        token.token = newAccessToken
+        token.accessToken = newAccessToken
         token.updatedAt = Date()
         tokenRepository.save(token)
 

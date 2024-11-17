@@ -4,6 +4,6 @@ import com.api.mulio_backend.model.Token
 import org.springframework.data.mongodb.repository.MongoRepository
 
 interface TokenRepository : MongoRepository<Token, String> {
-    fun findByToken(token: String): Token?
+    fun findByAccessToken(accessToken: String): Token?
     fun findByRefreshToken(refreshToken: String): Token?
 }
