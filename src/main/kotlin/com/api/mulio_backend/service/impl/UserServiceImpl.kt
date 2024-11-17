@@ -1,5 +1,7 @@
 package com.api.mulio_backend.service.impl
 
+import com.api.mulio_backend.config.JwtRequestFilter
+import com.api.mulio_backend.config.JwtTokenUtil
 import com.api.mulio_backend.config.MapData
 import com.api.mulio_backend.helper.enums.Role
 import com.api.mulio_backend.helper.enums.TokenType
@@ -7,6 +9,7 @@ import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.CreateUserRequest
 import com.api.mulio_backend.helper.response.CartResponse
 import com.api.mulio_backend.helper.response.CreateUserResponse
+import com.api.mulio_backend.helper.response.UserResponse
 import com.api.mulio_backend.model.Cart
 import com.api.mulio_backend.model.Token
 import com.api.mulio_backend.model.User
@@ -26,6 +29,8 @@ class UserServiceImpl @Autowired constructor(
     private val userRepository: UserRepository,
     private val tokenRepository: TokenRepository,
     private val cartRepository: CartRepository,
+    private val jwtTokenUtil: JwtTokenUtil,
+    private val jwtRequestFilter: JwtRequestFilter,
     private val emailService: EmailService,
     private val passwordEncoder: BCryptPasswordEncoder,
     private val mapData: MapData
@@ -108,6 +113,30 @@ class UserServiceImpl @Autowired constructor(
             }
         } else {
             "Liên kết xác minh không hợp lệ hoặc đã hết hạn!"
+        }
+    }
+
+    override fun getUser(tokenStr: String): UserResponse {
+        val token = tokenRepository.findByToken(tokenStr)
+
+        if (token != null) {
+            val email = jwtTokenUtil.getUsernameFromToken(token.token)
+
+            val user = userRepository.findByEmail(email)
+
+            if (user != null) {
+                return UserResponse(
+                    userId = user.userId,
+                    username = user.username,
+                    email = user.email,
+                    role = user.role,
+                    enabled = user.enabled
+                )
+            } else {
+                throw CustomException("User not found", HttpStatus.NOT_FOUND)
+            }
+        } else {
+            throw CustomException("Token not found", HttpStatus.NOT_FOUND)
         }
     }
 }

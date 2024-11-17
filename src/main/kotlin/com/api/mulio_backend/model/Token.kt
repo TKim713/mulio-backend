@@ -9,8 +9,8 @@ import java.util.*
 data class Token(
     @Id
     val tokenId: String,
-    val token: String,
-
+    var token: String,
+    val refreshToken: String? = null,
     val tokenType: TokenType? = null,
 
     var expired: Boolean = false, // Xác định token có hết hạn không

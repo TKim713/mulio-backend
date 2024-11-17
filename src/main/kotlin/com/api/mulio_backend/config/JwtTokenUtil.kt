@@ -16,7 +16,7 @@ class JwtTokenUtil : Serializable {
 
     companion object {
         private const val serialVersionUID = -2550185165626007488L
-        const val JWT_TOKEN_VALIDITY = 7 * 24 * 60 * 60
+        const val JWT_TOKEN_VALIDITY = 60 * 60
     }
 
     @Autowired
@@ -48,7 +48,7 @@ class JwtTokenUtil : Serializable {
     }
 
     // Check if the token has expired
-    private fun isTokenExpired(token: String): Boolean {
+    fun isTokenExpired(token: String): Boolean {
         val expiration = getExpirationDateFromToken(token)
         return expiration.before(Date())
     }
@@ -74,9 +74,29 @@ class JwtTokenUtil : Serializable {
             .compact()
     }
 
+    fun generateRefreshToken(userDetails: UserDetails): String {
+        return Jwts.builder()
+            .setSubject(userDetails.username)
+            .setIssuedAt(Date(System.currentTimeMillis()))
+            .setExpiration(Date(System.currentTimeMillis() + (10 * 24 * 60 * 60 * 1000L)))
+            .signWith(SignatureAlgorithm.HS512, secret)
+            .compact()
+    }
+
     // Validate token
     fun validateToken(token: String, userDetails: UserDetails): Boolean {
         val username = getUsernameFromToken(token)
         return username == userDetails.username && !isTokenExpired(token) && !isTokenRevoked(token)
+    }
+
+    fun validateRefreshToken(refreshToken: String): Boolean {
+        return try {
+            val username = getUsernameFromToken(refreshToken)
+            val isExpired = isTokenExpired(refreshToken)
+            val isRevoked = isTokenRevoked(refreshToken)
+            !isExpired && !isRevoked
+        } catch (ex: Exception) {
+            false
+        }
     }
 }

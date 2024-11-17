@@ -54,11 +54,13 @@ class AuthenticationServiceImpl @Autowired constructor(
         }
 
         val userDetails: UserDetails = jwtUserDetailsService.loadUserByUsername(authenticationRequest.email)
-        val token: String = jwtTokenUtil.generateToken(userDetails)
+        val accessToken = jwtTokenUtil.generateToken(userDetails)
+        val refreshToken = jwtTokenUtil.generateRefreshToken(userDetails)
 
         val newToken = Token(
             tokenId = UUID.randomUUID().toString(),
-            token = token,
+            token = accessToken,
+            refreshToken = refreshToken,
             tokenType = TokenType.BEARER,
             expired = false,
             revoked = false,
@@ -67,7 +69,7 @@ class AuthenticationServiceImpl @Autowired constructor(
         )
         tokenRepository.save(newToken)
 
-        return JwtResponse(token)
+        return JwtResponse(accessToken, refreshToken)
     }
 
     override fun logout(tokenStr: String) {
@@ -81,5 +83,32 @@ class AuthenticationServiceImpl @Autowired constructor(
         } else {
             throw CustomException("Token not found", HttpStatus.NOT_FOUND)
         }
+    }
+
+    override fun refreshToken(refreshToken: String): JwtResponse {
+        if (!jwtTokenUtil.validateRefreshToken(refreshToken)) {
+            val token = tokenRepository.findByRefreshToken(refreshToken)
+            token?.apply {
+                expired = true
+                revoked = true
+                tokenRepository.save(this)
+            }
+            throw CustomException("Invalid or expired refresh token", HttpStatus.UNAUTHORIZED)
+        }
+
+        val token = tokenRepository.findByRefreshToken(refreshToken)
+            ?: throw CustomException("Invalid refresh token", HttpStatus.UNAUTHORIZED)
+
+        val userDetails: UserDetails = jwtUserDetailsService.loadUserByUsername(token.user)
+        val newAccessToken = jwtTokenUtil.generateToken(userDetails)
+
+        token.token = newAccessToken
+        token.updatedAt = Date()
+        tokenRepository.save(token)
+
+        return JwtResponse(
+            accessToken = newAccessToken,
+            refreshToken = refreshToken
+        )
     }
 }

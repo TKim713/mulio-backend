@@ -5,4 +5,5 @@ import org.springframework.data.mongodb.repository.MongoRepository
 
 interface TokenRepository : MongoRepository<Token, String> {
     fun findByToken(token: String): Token?
+    fun findByRefreshToken(refreshToken: String): Token?
 }
