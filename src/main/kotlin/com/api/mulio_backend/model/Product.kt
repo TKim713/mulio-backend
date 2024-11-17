@@ -1,13 +1,16 @@
 package com.api.mulio_backend.model
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize
+import org.bson.types.ObjectId
 import org.springframework.data.annotation.Id
 import org.springframework.data.mongodb.core.mapping.Document
-import org.bson.types.ObjectId
 import java.util.*
+import com.api.mulio_backend.serializer.ObjectIdSerializer
 
 @Document(collection = "product")
 data class Product(
     @Id
+    @JsonSerialize(using = ObjectIdSerializer::class)
     val productId: ObjectId = ObjectId.get(),
     var productName: String,
     var price: Float,
