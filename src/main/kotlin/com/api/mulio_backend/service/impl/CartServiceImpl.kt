@@ -6,6 +6,7 @@ import com.api.mulio_backend.helper.request.CheckoutRequest
 import com.api.mulio_backend.helper.request.CartRequest
 import com.api.mulio_backend.helper.response.CartProductResponse
 import com.api.mulio_backend.helper.response.CartResponse
+import com.api.mulio_backend.helper.response.OrderResponse
 import com.api.mulio_backend.model.CartProduct
 import com.api.mulio_backend.model.Order
 import com.api.mulio_backend.repository.CartRepository
@@ -148,7 +149,7 @@ class CartServiceImpl @Autowired constructor(
             products = updatedProducts,
             totalNumber = totalNumber,
             totalPrice = totalPrice,
-            updatedAt = Date()
+            updatedAt = now
         )
 
         val savedCart = cartRepository.save(updatedCart)
@@ -161,7 +162,7 @@ class CartServiceImpl @Autowired constructor(
         return response
     }
 
-    override fun checkout(cartId: String, checkoutRequest: CheckoutRequest): Order {
+    override fun checkout(cartId: String, checkoutRequest: CheckoutRequest): OrderResponse {
         val existingCart = cartRepository.findById(cartId).orElseThrow {
             CustomException("Cart not found", HttpStatus.NOT_FOUND)
         }
@@ -217,22 +218,32 @@ class CartServiceImpl @Autowired constructor(
         val order = Order(
             orderId = UUID.randomUUID().toString(),
             userId = existingCart.userId,
+            fullName = checkoutRequest.fullName,
+            phone = checkoutRequest.phone,
+            address = checkoutRequest.address,
+            city = checkoutRequest.city,
+            district = checkoutRequest.district,
+            ward = checkoutRequest.ward,
+            paymentMethod = checkoutRequest.paymentMethod,
             totalPrice = totalPrice,
-            orderDate = Date(),
+            orderDate = now,
             orderProduct = checkoutProducts,
-            createdAt = Date()
+            createdAt = now
         )
-        orderRepository.save(order)
+        val savedOrder = orderRepository.save(order)
 
         existingCart.totalNumber = remainingProducts.sumOf { it.totalAmount }
         existingCart.totalPrice = remainingProducts.fold(0f) { acc, item -> acc + (item.totalPrice * item.totalAmount) }
         existingCart.updatedAt = Date()
         cartRepository.save(existingCart)
 
-        return order
+        val response = mapData.mapOne(savedOrder, OrderResponse::class.java)
+        response.orderProduct = mapToCartProductResponse(savedOrder.orderProduct)
+
+        return response
     }
 
-    fun mapToCartProductResponse(cartProducts: List<CartProduct>): List<CartProductResponse> {
+    override fun mapToCartProductResponse(cartProducts: List<CartProduct>): List<CartProductResponse> {
         return cartProducts.map { cartProduct ->
             val productDetails = productRepository.findById(cartProduct.productId).orElse(null)
             CartProductResponse(

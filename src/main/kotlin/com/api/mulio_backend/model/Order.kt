@@ -9,6 +9,13 @@ data class Order(
     @Id
     val orderId: String,
     val userId: String,
+    val fullName: String,
+    val phone: String,
+    val address: String,
+    val city: String,
+    val district: String,
+    val ward: String,
+    val paymentMethod: String,
     val totalPrice: Float,
     val orderDate: Date,
     val orderProduct: List<CartProduct>,
