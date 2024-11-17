@@ -1,6 +1,13 @@
 package com.api.mulio_backend.helper.request
 
 data class CheckoutRequest(
+    var fullName: String,
+    var phone: String,
+    var address: String,
+    var city: String,
+    var district: String,
+    var ward: String,
+    var paymentMethod: String,
     var totalPrice: Float,
-    var itemsToCheckout: List<CartProductRequest>
+    var itemsToCheckout: List<CartProductRequest>,
 )

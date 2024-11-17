@@ -4,6 +4,7 @@ import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.CartRequest
 import com.api.mulio_backend.helper.request.CheckoutRequest
 import com.api.mulio_backend.helper.response.CartResponse
+import com.api.mulio_backend.helper.response.OrderResponse
 import com.api.mulio_backend.helper.response.ResponseObject
 import com.api.mulio_backend.service.CartService
 import org.springframework.beans.factory.annotation.Autowired
@@ -20,7 +21,7 @@ class CartController @Autowired constructor(
     @PostMapping("/{cartId}/products/{productId}")
     fun addToCart(
         @PathVariable cartId: String,
-        @PathVariable productId: String, // Change to use productId in the URL
+        @PathVariable productId: String,
         @RequestBody cartRequest: CartRequest
     ): ResponseEntity<ResponseObject<CartResponse>> {
         return try {
@@ -74,12 +75,11 @@ class CartController @Autowired constructor(
     }
 
     @PostMapping("/{cartId}/checkout")
-    fun checkout(@PathVariable cartId: String, @RequestBody checkoutRequest: CheckoutRequest): ResponseEntity<ResponseObject<String>> {
+    fun checkout(@PathVariable cartId: String, @RequestBody checkoutRequest: CheckoutRequest): ResponseEntity<ResponseObject<OrderResponse>> {
         return try {
-            cartService.checkout(cartId, checkoutRequest)
-
+            val orderResponse = cartService.checkout(cartId, checkoutRequest)
             ResponseEntity.status(HttpStatus.OK)
-                .body(ResponseObject(HttpStatus.OK.value(), "Checkout successfully", ""))
+                .body(ResponseObject(HttpStatus.OK.value(), "Checkout successfully", orderResponse))
         } catch (e: CustomException) {
             ResponseEntity.status(e.status)
                 .body(ResponseObject(e.status.value(), e.message ?: "Custom error occurred", null))
