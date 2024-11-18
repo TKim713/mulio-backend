@@ -9,7 +9,7 @@ import java.util.*
 data class Token(
     @Id
     val tokenId: String,
-    var token: String,
+    var accessToken: String,
     val refreshToken: String? = null,
     val tokenType: TokenType? = null,
 

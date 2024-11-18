@@ -8,12 +8,10 @@ import java.util.*
 data class Customer(
     @Id
     val customerId: String,
-    var fullName: String,
-    var phone: String,
-    var address: String,
-    var city: String,
-    var district: String,
-    var ward: String,
+    val userId: String,
+    var fullName: String? = null,
+    var phone: String? = null,
+    var address: String? = null,
     val createdAt: Date,
     var updatedAt: Date? = null,
     var deletedAt: Date? = null
