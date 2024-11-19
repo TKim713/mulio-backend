@@ -9,7 +9,7 @@ import com.api.mulio_backend.model.CartProduct
 
 interface CartService {
     fun addToCart(cartId: String, productId: String, cartRequest: CartRequest): CartResponse
-    fun getCartByUserId(userId: String): CartResponse
+    fun getCart(tokenStr: String): CartResponse
     fun updateProductInCart(cartId: String, productId: String, cartRequest: CartRequest): CartResponse
     fun deleteProductFromCart(cartId: String, productId: String): CartResponse
     fun checkout(cartId: String, checkoutRequest: CheckoutRequest): OrderResponse
