@@ -41,10 +41,11 @@ class UserController @Autowired constructor (
         }
     }
 
-    @GetMapping("{userId}/cart")
-    fun getCartByUserId(@PathVariable userId: String): ResponseEntity<ResponseObject<CartResponse>> {
+    @GetMapping("/cart")
+    fun getCartByUserId(@RequestHeader("Authorization") token: String): ResponseEntity<ResponseObject<CartResponse>> {
+        val jwtToken = token.replace("Bearer ", "")
         return try {
-            val cartResponse = cartService.getCartByUserId(userId)
+            val cartResponse = cartService.getCart(jwtToken)
             ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseObject(HttpStatus.OK.value(), "Cart retrieved successfully", cartResponse))
         } catch (e: CustomException) {
@@ -53,14 +54,15 @@ class UserController @Autowired constructor (
         }
     }
 
-    @GetMapping("{userId}/orders")
+    @GetMapping("/orders")
     fun getOrderByUserId(
-        @PathVariable userId: String,
+        @RequestHeader("Authorization") token: String,
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "10") size: Int
     ): ResponseEntity<ResponseObject<Page<OrderResponse>>> {
+        val jwtToken = token.replace("Bearer ", "")
         return try {
-            val orders = orderService.getOrderByUserId(userId, page, size)
+            val orders = orderService.getOrder(jwtToken, page, size)
             ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseObject(HttpStatus.OK.value(), "Orders retrieved successfully", orders))
         } catch (e: CustomException) {
@@ -72,13 +74,14 @@ class UserController @Autowired constructor (
         }
     }
 
-    @PutMapping("/{userId}/update-info")
+    @PutMapping("/update-info")
     fun updateUserInfo(
-        @PathVariable userId: String,
+        @RequestHeader("Authorization") token: String,
         @Valid @RequestBody customerRequest: CustomerRequest
     ): ResponseEntity<ResponseObject<CustomerResponse>> {
+        val jwtToken = token.replace("Bearer ", "")
         return try {
-            val updatedCustomerResponse = customerService.updateCustomerInfoByUserId(userId, customerRequest)
+            val updatedCustomerResponse = customerService.updateCustomerInfo(jwtToken, customerRequest)
             ResponseEntity.status(HttpStatus.OK)
                 .body(ResponseObject(HttpStatus.OK.value(), "Customer information updated successfully", updatedCustomerResponse))
         } catch (e: CustomException) {
@@ -90,13 +93,14 @@ class UserController @Autowired constructor (
         }
     }
 
-    @PostMapping("/{userId}/change-password")
+    @PostMapping("/change-password")
     fun changePassword(
-        @PathVariable userId: String,
+        @RequestHeader("Authorization") token: String,
         @Valid @RequestBody changePasswordRequest: ChangePasswordRequest
     ): ResponseEntity<ResponseObject<String>> {
+        val jwtToken = token.replace("Bearer ", "")
         return try {
-            val success = userService.changePassword(userId, changePasswordRequest)
+            val success = userService.changePassword(jwtToken, changePasswordRequest)
             if (success) {
                 ResponseEntity.status(HttpStatus.OK)
                     .body(ResponseObject(HttpStatus.OK.value(), "Password changed successfully", "Success"))
@@ -110,6 +114,23 @@ class UserController @Autowired constructor (
         } catch (e: Exception) {
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ResponseObject(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Unexpected error: ${e.message}", null))
+        }
+    }
+
+    @GetMapping("/customer-info")
+    fun getCustomerInfo(@RequestHeader("Authorization") token: String): ResponseEntity<ResponseObject<CustomerResponse>> {
+        val jwtToken = token.replace("Bearer ", "")
+
+        return try {
+            val response = customerService.getCustomerInfo(jwtToken)
+
+            ResponseEntity.ok(ResponseObject(HttpStatus.OK.value(), "Customer info retrieved successfully", response))
+        } catch (e: CustomException) {
+            ResponseEntity.status(e.status)
+                .body(ResponseObject(e.status.value(), e.message ?: "Error retrieving customer info", null))
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ResponseObject(HttpStatus.BAD_REQUEST.value(), "An unexpected error occurred: ${e.message}", null))
         }
     }
 }

@@ -9,5 +9,5 @@ interface UserService {
     fun createUser(userRequest: CreateUserRequest): CreateUserResponse
     fun verifyEmail(tokenStr: String): String
     fun getUser(tokenStr: String): UserResponse
-    fun changePassword(userId: String, changePasswordRequest: ChangePasswordRequest): Boolean
+    fun changePassword(tokenStr: String, changePasswordRequest: ChangePasswordRequest): Boolean
 }

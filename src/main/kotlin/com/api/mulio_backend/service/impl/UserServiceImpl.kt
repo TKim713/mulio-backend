@@ -1,10 +1,8 @@
 package com.api.mulio_backend.service.impl
 
-import com.api.mulio_backend.config.JwtRequestFilter
 import com.api.mulio_backend.config.JwtTokenUtil
 import com.api.mulio_backend.config.MapData
 import com.api.mulio_backend.helper.enums.Role
-import com.api.mulio_backend.helper.enums.TokenType
 import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.ChangePasswordRequest
 import com.api.mulio_backend.helper.request.CreateUserRequest
@@ -31,7 +29,6 @@ class UserServiceImpl @Autowired constructor(
     private val tokenRepository: TokenRepository,
     private val cartRepository: CartRepository,
     private val jwtTokenUtil: JwtTokenUtil,
-    private val jwtRequestFilter: JwtRequestFilter,
     private val emailService: EmailService,
     private val passwordEncoder: BCryptPasswordEncoder,
     private val mapData: MapData
@@ -141,22 +138,33 @@ class UserServiceImpl @Autowired constructor(
         }
     }
 
-    override fun changePassword(userId: String, changePasswordRequest: ChangePasswordRequest): Boolean {
-        val user = userRepository.findById(userId)
-            .orElseThrow { CustomException("User not found", HttpStatus.NOT_FOUND) }
+    override fun changePassword(tokenStr: String, changePasswordRequest: ChangePasswordRequest): Boolean {
 
-        if (!passwordEncoder.matches(changePasswordRequest.oldPassword, user.password)) {
-            throw CustomException("Old password is incorrect", HttpStatus.BAD_REQUEST)
+        val token = tokenRepository.findByAccessToken(tokenStr)
+
+        if (token != null) {
+            val email = jwtTokenUtil.getUsernameFromToken(token.accessToken)
+            val user = userRepository.findByEmail(email)
+
+            if (user != null) {
+                if (!passwordEncoder.matches(changePasswordRequest.oldPassword, user.password)) {
+                    throw CustomException("Old password is incorrect", HttpStatus.BAD_REQUEST)
+                }
+
+                if (changePasswordRequest.oldPassword == changePasswordRequest.newPassword) {
+                    throw CustomException("New password cannot be the same as the old password", HttpStatus.BAD_REQUEST)
+                }
+
+                val encodedNewPassword = passwordEncoder.encode(changePasswordRequest.newPassword)
+
+                user.password = encodedNewPassword
+                userRepository.save(user)
+            } else {
+                throw CustomException("User not found", HttpStatus.NOT_FOUND)
+            }
+        } else {
+            throw CustomException("Token not found", HttpStatus.NOT_FOUND)
         }
-
-        if (changePasswordRequest.oldPassword == changePasswordRequest.newPassword) {
-            throw CustomException("New password cannot be the same as the old password", HttpStatus.BAD_REQUEST)
-        }
-
-        val encodedNewPassword = passwordEncoder.encode(changePasswordRequest.newPassword)
-
-        user.password = encodedNewPassword
-        userRepository.save(user)
 
         return true
     }

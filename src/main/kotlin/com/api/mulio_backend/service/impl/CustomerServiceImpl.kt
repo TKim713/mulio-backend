@@ -1,11 +1,14 @@
 package com.api.mulio_backend.service.impl
 
+import com.api.mulio_backend.config.JwtTokenUtil
 import com.api.mulio_backend.config.MapData
 import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.CustomerRequest
 import com.api.mulio_backend.helper.response.CustomerResponse
 import com.api.mulio_backend.model.Customer
 import com.api.mulio_backend.repository.CustomerRepository
+import com.api.mulio_backend.repository.TokenRepository
+import com.api.mulio_backend.repository.UserRepository
 import com.api.mulio_backend.service.CustomerService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -15,33 +18,69 @@ import java.util.*
 @Service
 class CustomerServiceImpl @Autowired constructor(
     private val customerRepository: CustomerRepository,
+    private val tokenRepository: TokenRepository,
+    private val userRepository: UserRepository,
+    private val jwtTokenUtil: JwtTokenUtil,
     private val mapData: MapData
 ) : CustomerService{
     private val now: Date = Date()
 
-    override fun updateCustomerInfoByUserId(userId: String, customerRequest: CustomerRequest): CustomerResponse {
-        var existingCustomer = customerRepository.findByUserId(userId).orElse(null)
+    override fun updateCustomerInfo(tokenStr: String, customerRequest: CustomerRequest): CustomerResponse {
+        val token = tokenRepository.findByAccessToken(tokenStr)
 
-        if (existingCustomer == null) {
-            existingCustomer = Customer(
-                customerId = UUID.randomUUID().toString(),
-                userId = userId,
-                fullName = customerRequest.fullName,
-                phone = customerRequest.phone,
-                address = customerRequest.address,
-                createdAt = now,
-                updatedAt = now
-            )
+        if (token != null) {
+            val email = jwtTokenUtil.getUsernameFromToken(token.accessToken)
+            val user = userRepository.findByEmail(email)
+
+            if (user != null) {
+                var existingCustomer = customerRepository.findByUserId(user.userId).orElse(null)
+
+                if (existingCustomer == null) {
+                    existingCustomer = Customer(
+                        customerId = UUID.randomUUID().toString(),
+                        userId = user.userId,
+                        fullName = customerRequest.fullName,
+                        phone = customerRequest.phone,
+                        address = customerRequest.address,
+                        createdAt = now,
+                        updatedAt = now
+                    )
+                } else {
+                    existingCustomer.fullName = customerRequest.fullName
+                    existingCustomer.phone = customerRequest.phone
+                    existingCustomer.address = customerRequest.address
+                    existingCustomer.updatedAt = now
+                }
+
+                val savedCustomer = customerRepository.save(existingCustomer)
+                return mapData.mapOne(savedCustomer, CustomerResponse::class.java)
+            } else {
+                throw CustomException("User not found", HttpStatus.NOT_FOUND)
+            }
         } else {
-            existingCustomer.fullName = customerRequest.fullName
-            existingCustomer.phone = customerRequest.phone
-            existingCustomer.address = customerRequest.address
-            existingCustomer.updatedAt = now
+            throw CustomException("Token not found", HttpStatus.NOT_FOUND)
         }
+    }
 
-        val savedCustomer = customerRepository.save(existingCustomer)
-        val response = mapData.mapOne(savedCustomer, CustomerResponse::class.java)
+    override fun getCustomerInfo(tokenStr: String): CustomerResponse {
+        val token = tokenRepository.findByAccessToken(tokenStr)
 
-        return response
+        if (token != null) {
+            val email = jwtTokenUtil.getUsernameFromToken(token.accessToken)
+
+            val user = userRepository.findByEmail(email)
+
+            if (user != null) {
+                val customer = customerRepository.findByUserId(user.userId).orElseThrow{
+                    CustomException("Customer not found", HttpStatus.NOT_FOUND)
+                }
+
+                return mapData.mapOne(customer, CustomerResponse::class.java)
+            } else {
+                throw CustomException("User not found", HttpStatus.NOT_FOUND)
+            }
+        } else {
+            throw CustomException("Token not found", HttpStatus.NOT_FOUND)
+        }
     }
 }

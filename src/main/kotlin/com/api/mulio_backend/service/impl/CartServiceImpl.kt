@@ -1,5 +1,6 @@
 package com.api.mulio_backend.service.impl
 
+import com.api.mulio_backend.config.JwtTokenUtil
 import com.api.mulio_backend.config.MapData
 import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.CheckoutRequest
@@ -9,9 +10,7 @@ import com.api.mulio_backend.helper.response.CartResponse
 import com.api.mulio_backend.helper.response.OrderResponse
 import com.api.mulio_backend.model.CartProduct
 import com.api.mulio_backend.model.Order
-import com.api.mulio_backend.repository.CartRepository
-import com.api.mulio_backend.repository.OrderRepository
-import com.api.mulio_backend.repository.ProductRepository
+import com.api.mulio_backend.repository.*
 import com.api.mulio_backend.service.CartService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -21,7 +20,10 @@ import java.util.*
 @Service
 class CartServiceImpl @Autowired constructor(
     private val productRepository: ProductRepository,
+    private val userRepository: UserRepository,
+    private val tokenRepository: TokenRepository,
     private val cartRepository: CartRepository,
+    private val jwtTokenUtil: JwtTokenUtil,
     private val orderRepository: OrderRepository,
     private val mapData: MapData
 ) : CartService {
@@ -73,16 +75,28 @@ class CartServiceImpl @Autowired constructor(
         return response
     }
 
-    override fun getCartByUserId(userId: String): CartResponse {
-        val existingCart = cartRepository.findByUserId(userId)
-            ?: throw CustomException("Cart not found for user: $userId", HttpStatus.NOT_FOUND)
+    override fun getCart(tokenStr: String): CartResponse {
+        val token = tokenRepository.findByAccessToken(tokenStr)
 
-        val productResponses = mapToCartProductResponse(existingCart.products)
+        if (token != null) {
+            val email = jwtTokenUtil.getUsernameFromToken(token.accessToken)
+            val user = userRepository.findByEmail(email)
 
-        val response = mapData.mapOne(existingCart, CartResponse::class.java)
-        response.products = productResponses
+            if (user != null) {
+                val existingCart = cartRepository.findByUserId(user.userId)
+                    ?: throw CustomException("Cart not found for user: $user.userId", HttpStatus.NOT_FOUND)
 
-        return response
+                val productResponses = mapToCartProductResponse(existingCart.products)
+
+                val response = mapData.mapOne(existingCart, CartResponse::class.java)
+                response.products = productResponses
+                return response
+            } else {
+                throw CustomException("User not found", HttpStatus.NOT_FOUND)
+            }
+        } else {
+            throw CustomException("Token not found", HttpStatus.NOT_FOUND)
+        }
     }
 
     override fun updateProductInCart(cartId: String, productId: String, cartRequest: CartRequest): CartResponse {
