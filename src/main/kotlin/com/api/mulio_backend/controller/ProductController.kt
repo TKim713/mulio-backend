@@ -22,15 +22,16 @@ class ProductController @Autowired constructor(
     @PostMapping
     fun createProduct(@RequestBody createProductRequest: CreateProductRequest): ResponseEntity<ResponseMessage<Product>> {
         val product = Product(
+            code = createProductRequest.code,
             productName = createProductRequest.productName,
             price = createProductRequest.price,
             description = createProductRequest.description,
             size = createProductRequest.size,
             color = createProductRequest.color,
-            amount = createProductRequest.amount,
+            amount = createProductRequest.amount ?: 0,
             status = createProductRequest.status,
             productType = createProductRequest.productType,
-            image = createProductRequest.image,
+            images = createProductRequest.images,
             createdAt = Date()
         )
         val createdProduct = productService.createProduct(product)
@@ -48,16 +49,16 @@ class ProductController @Autowired constructor(
         @PathVariable id: String, @RequestBody updateProductRequest: CreateProductRequest
     ): ResponseEntity<ResponseMessage<Product>> {
         val product = Product(
-            productId = ObjectId(id),
+            code = updateProductRequest.code,
             productName = updateProductRequest.productName,
             price = updateProductRequest.price,
             description = updateProductRequest.description,
             size = updateProductRequest.size,
             color = updateProductRequest.color,
-            amount = updateProductRequest.amount,
+            amount = updateProductRequest.amount?:0,
             status = updateProductRequest.status,
             productType = updateProductRequest.productType,
-            image = updateProductRequest.image,
+            images = updateProductRequest.images,
             createdAt = productService.getProductById(ObjectId(id))?.createdAt ?: Date(),
             updatedAt = Date()
         )
@@ -84,6 +85,12 @@ class ProductController @Autowired constructor(
     fun getProducts(@RequestParam(defaultValue = "0") page: Int, @RequestParam(defaultValue = "10") size: Int): ResponseEntity<ResponseMessage<Page<Product>>> {
         val pageable: Pageable = PageRequest.of(page, size)
         val products = productService.getProducts(pageable)
+        return ResponseEntity.ok(ResponseMessage("Products retrieved successfully", products))
+    }
+
+    @GetMapping("/groupProductType")
+    fun getAllGroupByProductType(): ResponseEntity<ResponseMessage<List<Map<String, Any>>>> {
+        val products = productService.getAllGroupByProductType()
         return ResponseEntity.ok(ResponseMessage("Products retrieved successfully", products))
     }
 }

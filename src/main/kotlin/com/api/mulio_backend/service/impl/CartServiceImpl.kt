@@ -269,7 +269,7 @@ class CartServiceImpl @Autowired constructor(
                 color = productDetails.color,
                 amount = cartProduct.totalAmount,
                 productType = productDetails.productType,
-                image = productDetails.image,
+                image = productDetails.images,
                 totalPrice = cartProduct.totalPrice
             )
         }

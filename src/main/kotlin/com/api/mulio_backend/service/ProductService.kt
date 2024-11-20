@@ -12,4 +12,5 @@ interface ProductService {
     fun deleteProduct(productId: ObjectId): Boolean
     fun getAllProducts(): List<Product>
     fun getProducts(pageable: Pageable): Page<Product> // New method for pagination
+    fun getAllGroupByProductType(): List<Map<String, Any>>
 }
