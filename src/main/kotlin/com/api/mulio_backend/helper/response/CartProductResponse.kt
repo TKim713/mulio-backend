@@ -2,6 +2,8 @@ package com.api.mulio_backend.helper.response
 
 data class CartProductResponse(
     val productId: String? = null,
+    val skuBase: String? = null,
+    val skuCode: String? = null,
     val productName: String? = null,
     val price: Float? = null,
     val description: String? = null,

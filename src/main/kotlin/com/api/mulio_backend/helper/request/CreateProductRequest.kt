@@ -1,7 +1,7 @@
 package com.api.mulio_backend.helper.request
 
 data class CreateProductRequest(
-    var code: String,
+    var skuBase: String,
     var productName: String,
     var price: Float,
     var description: String,
