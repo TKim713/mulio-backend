@@ -208,14 +208,14 @@ class CartServiceImpl @Autowired constructor(
                     CustomException("Product not found", HttpStatus.NOT_FOUND)
                 }
 
-                if (product.amount < itemToCheckout.totalAmount) {
+                if (product.amount!! < itemToCheckout.totalAmount) {
                     throw CustomException(
                         "Not enough stock for product ${product.productId}",
                         HttpStatus.BAD_REQUEST
                     )
                 }
 
-                product.amount -= itemToCheckout.totalAmount
+                product.amount = product.amount?.minus(itemToCheckout.totalAmount)
                 productRepository.save(product)
             }
         }
@@ -262,6 +262,8 @@ class CartServiceImpl @Autowired constructor(
             val productDetails = productRepository.findById(cartProduct.productId).orElse(null)
             CartProductResponse(
                 productId = productDetails.productId.toString(),
+                skuBase = productDetails.skuBase,
+                skuCode = productDetails.skuCode,
                 productName = productDetails.productName,
                 price = productDetails.price,
                 description = productDetails?.description,
@@ -269,7 +271,7 @@ class CartServiceImpl @Autowired constructor(
                 color = productDetails.color,
                 amount = cartProduct.totalAmount,
                 productType = productDetails.productType,
-                image = productDetails.image,
+                image = productDetails.images,
                 totalPrice = cartProduct.totalPrice
             )
         }
