@@ -7,6 +7,7 @@ import com.api.mulio_backend.model.Review
 import com.api.mulio_backend.model.Wishlist
 import com.api.mulio_backend.repository.ProductRepository
 import com.api.mulio_backend.repository.ReviewRepository
+import com.api.mulio_backend.repository.UserRepository
 import com.api.mulio_backend.repository.WishlistRepository
 import com.api.mulio_backend.service.ProductService
 import org.bson.types.ObjectId
@@ -21,7 +22,8 @@ import java.util.*
 class ProductServiceImpl @Autowired constructor(
     private val productRepository: ProductRepository,
     private val wishlistRepository: WishlistRepository,
-    private val reviewRepository: ReviewRepository
+    private val reviewRepository: ReviewRepository,
+    private val userRepository: UserRepository
 ) : ProductService {
     private val vietnamTimeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh")
 
@@ -182,7 +184,13 @@ class ProductServiceImpl @Autowired constructor(
     }
 
     override fun addReview(productId: ObjectId, userId: String, rating: Int, comment: String): Review {
-        val review = Review(productId = productId, userId = userId, rating = rating, comment = comment)
+        val existingUser = userRepository.findById(userId).orElseThrow {
+            CustomException("User not found", HttpStatus.NOT_FOUND)
+        }
+        val existingProduct = productRepository.findById(productId.toString()).orElseThrow {
+            CustomException("Product not found", HttpStatus.NOT_FOUND)
+        }
+        val review = Review(productId = existingProduct.productId, userId = existingUser.userId, rating = rating, comment = comment)
         return reviewRepository.save(review)
     }
 

@@ -1,7 +1,7 @@
 package com.api.mulio_backend.model
 
 data class ProductDetailsResponse(
-    val id: String,
+    val productId: String,
     val name: String,
     val price: Float,
     val description: String,

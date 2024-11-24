@@ -207,7 +207,7 @@ class ProductController @Autowired constructor(
             val wishlist = productService.getWishlist(userId)
             val productDetails = wishlist.map { product ->
                 ProductDetailsResponse(
-                    id = product.productId.toString(),
+                    productId = product.productId.toString(),
                     name = product.productName,
                     price = product.price,
                     description = product.description
@@ -228,14 +228,22 @@ class ProductController @Autowired constructor(
         @PathVariable productId: String,
         @RequestBody reviewRequest: ReviewRequest
     ): ResponseEntity<ResponseObject<Review>> {
-        val review = productService.addReview(
-            ObjectId(productId),
-            reviewRequest.userId,
-            reviewRequest.rating,
-            reviewRequest.comment
-        )
-        return ResponseEntity.status(HttpStatus.CREATED)
-            .body(ResponseObject(HttpStatus.CREATED.value(), "Review added successfully", review))
+        return try {
+            val review = productService.addReview(
+                ObjectId(productId),
+                reviewRequest.userId,
+                reviewRequest.rating,
+                reviewRequest.comment
+            )
+            ResponseEntity.status(HttpStatus.CREATED)
+                .body(ResponseObject(HttpStatus.CREATED.value(), "Review added successfully", review))
+        } catch (e: CustomException) {
+            ResponseEntity.status(e.status)
+                .body(ResponseObject(e.status.value(), "Error adding review: ${e.message}", null))
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseObject(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An unexpected error occurred: ${e.message}", null))
+        }
     }
 
     @GetMapping("/reviews/{productId}")

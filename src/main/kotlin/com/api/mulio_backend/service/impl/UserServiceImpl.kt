@@ -10,9 +10,11 @@ import com.api.mulio_backend.helper.response.CartResponse
 import com.api.mulio_backend.helper.response.CreateUserResponse
 import com.api.mulio_backend.helper.response.UserResponse
 import com.api.mulio_backend.model.Cart
+import com.api.mulio_backend.model.Customer
 import com.api.mulio_backend.model.Token
 import com.api.mulio_backend.model.User
 import com.api.mulio_backend.repository.CartRepository
+import com.api.mulio_backend.repository.CustomerRepository
 import com.api.mulio_backend.repository.TokenRepository
 import com.api.mulio_backend.repository.UserRepository
 import com.api.mulio_backend.service.EmailService
@@ -28,6 +30,7 @@ class UserServiceImpl @Autowired constructor(
     private val userRepository: UserRepository,
     private val tokenRepository: TokenRepository,
     private val cartRepository: CartRepository,
+    private val customerRepository: CustomerRepository,
     private val jwtTokenUtil: JwtTokenUtil,
     private val emailService: EmailService,
     private val passwordEncoder: BCryptPasswordEncoder,
@@ -102,6 +105,17 @@ class UserServiceImpl @Autowired constructor(
                         totalPrice = 0f,
                         createdAt = now
                     )
+
+                // Tạo customer
+                val customer = Customer(
+                    customerId = UUID.randomUUID().toString(),
+                    userId = user.userId,
+                    fullName = "",
+                    phone = "",
+                    address = "",
+                    createdAt = now
+                )
+                customerRepository.save(customer)
                 val savedCart = newCart.let { cartRepository.save(it) }
                 mapData.mapOne(savedCart, CartResponse::class.java)
 

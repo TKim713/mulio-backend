@@ -5,5 +5,6 @@ data class CustomerResponse(
     var userId: String? = null,
     var fullName: String? = null,
     var phone: String? = null,
+    var email: String? = null,
     var address: String? = null,
 )

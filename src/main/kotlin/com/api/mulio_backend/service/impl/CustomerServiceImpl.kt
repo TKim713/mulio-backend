@@ -33,24 +33,14 @@ class CustomerServiceImpl @Autowired constructor(
             val user = userRepository.findByEmail(email)
 
             if (user != null) {
-                var existingCustomer = customerRepository.findByUserId(user.userId).orElse(null)
-
-                if (existingCustomer == null) {
-                    existingCustomer = Customer(
-                        customerId = UUID.randomUUID().toString(),
-                        userId = user.userId,
-                        fullName = customerRequest.fullName,
-                        phone = customerRequest.phone,
-                        address = customerRequest.address,
-                        createdAt = now,
-                        updatedAt = now
-                    )
-                } else {
-                    existingCustomer.fullName = customerRequest.fullName
-                    existingCustomer.phone = customerRequest.phone
-                    existingCustomer.address = customerRequest.address
-                    existingCustomer.updatedAt = now
+                val existingCustomer = customerRepository.findByUserId(user.userId).orElseThrow {
+                    CustomException("Customer not found", HttpStatus.NOT_FOUND)
                 }
+
+                existingCustomer.fullName = customerRequest.fullName
+                existingCustomer.phone = customerRequest.phone
+                existingCustomer.address = customerRequest.address
+                existingCustomer.updatedAt = now
 
                 val savedCustomer = customerRepository.save(existingCustomer)
                 return mapData.mapOne(savedCustomer, CustomerResponse::class.java)
@@ -75,7 +65,9 @@ class CustomerServiceImpl @Autowired constructor(
                     CustomException("Customer not found", HttpStatus.NOT_FOUND)
                 }
 
-                return mapData.mapOne(customer, CustomerResponse::class.java)
+                val response = mapData.mapOne(customer, CustomerResponse::class.java)
+                response.email = email
+                return response
             } else {
                 throw CustomException("User not found", HttpStatus.NOT_FOUND)
             }
