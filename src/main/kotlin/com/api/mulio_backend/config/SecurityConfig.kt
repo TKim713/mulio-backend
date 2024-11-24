@@ -6,6 +6,7 @@ import org.modelmapper.ModelMapper
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -36,8 +37,8 @@ class SecurityConfig @Autowired constructor(
                     .requestMatchers("/api/auth/**").permitAll()
                     .requestMatchers("/api/users/**").hasAnyAuthority(*RolePermissions.ALL_API_ROLES)
                     .requestMatchers("/api/cart/**").hasAnyAuthority(*RolePermissions.ALL_API_ROLES)
-                    .requestMatchers("/api/products/**").hasAnyAuthority(*RolePermissions.ALL_API_ROLES)
-//                    .requestMatchers("/api/products/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll() // Allow GET requests
+                    .requestMatchers("/api/products/**").authenticated()
                     .anyRequest().authenticated()
             }
             .exceptionHandling { exceptionHandling ->
