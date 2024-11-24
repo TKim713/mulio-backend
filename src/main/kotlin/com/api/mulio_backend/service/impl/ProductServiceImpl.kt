@@ -3,7 +3,11 @@ package com.api.mulio_backend.service.impl
 import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.CreateProductRequest
 import com.api.mulio_backend.model.Product
+import com.api.mulio_backend.model.Review
+import com.api.mulio_backend.model.Wishlist
 import com.api.mulio_backend.repository.ProductRepository
+import com.api.mulio_backend.repository.ReviewRepository
+import com.api.mulio_backend.repository.WishlistRepository
 import com.api.mulio_backend.service.ProductService
 import org.bson.types.ObjectId
 import org.springframework.beans.factory.annotation.Autowired
@@ -15,7 +19,9 @@ import java.util.*
 
 @Service
 class ProductServiceImpl @Autowired constructor(
-    private val productRepository: ProductRepository
+    private val productRepository: ProductRepository,
+    private val wishlistRepository: WishlistRepository,
+    private val reviewRepository: ReviewRepository
 ) : ProductService {
     private val vietnamTimeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh")
 
@@ -161,4 +167,27 @@ class ProductServiceImpl @Autowired constructor(
 
         return products.map { it.color }.distinct().takeIf { it.isNotEmpty() } ?: emptyList()
     }
+
+    override fun addToWishlist(userId: String, productId: String) {
+        val wishlist = wishlistRepository.findByUserId(userId) ?: Wishlist(userId = userId)
+        if (!wishlist.productIds.contains(productId)) {
+            wishlist.productIds.add(productId)
+            wishlistRepository.save(wishlist)
+        }
+    }
+
+    override fun getWishlist(userId: String): List<Product> {
+        val wishlist = wishlistRepository.findByUserId(userId) ?: return emptyList()
+        return productRepository.findAllById(wishlist.productIds)
+    }
+
+    override fun addReview(productId: ObjectId, userId: String, rating: Int, comment: String): Review {
+        val review = Review(productId = productId, userId = userId, rating = rating, comment = comment)
+        return reviewRepository.save(review)
+    }
+
+    override fun getReviewsByProductId(productId: ObjectId): List<Review> {
+        return reviewRepository.findAll().filter { it.productId == productId }
+    }
+
 }

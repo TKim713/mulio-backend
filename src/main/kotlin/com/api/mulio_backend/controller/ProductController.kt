@@ -2,9 +2,12 @@ package com.api.mulio_backend.controller
 
 import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.CreateProductRequest
+import com.api.mulio_backend.helper.request.ReviewRequest
 import com.api.mulio_backend.helper.response.ResponseMessage
 import com.api.mulio_backend.helper.response.ResponseObject
 import com.api.mulio_backend.model.Product
+import com.api.mulio_backend.model.ProductDetailsResponse
+import com.api.mulio_backend.model.Review
 import com.api.mulio_backend.service.ProductService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.domain.Page
@@ -49,7 +52,8 @@ class ProductController @Autowired constructor(
     fun updateProduct(
         @PathVariable id: String, @RequestBody updateProductRequest: CreateProductRequest
     ): ResponseEntity<ResponseMessage<Product>> {
-        val updatedProduct = productService.updateProduct(id, updateProductRequest) ?: return ResponseEntity.notFound().build()
+        val updatedProduct =
+            productService.updateProduct(id, updateProductRequest) ?: return ResponseEntity.notFound().build()
         return ResponseEntity.ok(ResponseMessage("Product updated successfully", updatedProduct))
     }
 
@@ -69,7 +73,10 @@ class ProductController @Autowired constructor(
     }
 
     @GetMapping("/page")
-    fun getProducts(@RequestParam(defaultValue = "0") page: Int, @RequestParam(defaultValue = "10") size: Int): ResponseEntity<ResponseMessage<Page<Product>>> {
+    fun getProducts(
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "10") size: Int
+    ): ResponseEntity<ResponseMessage<Page<Product>>> {
         val pageable: Pageable = PageRequest.of(page, size)
         val products = productService.getProducts(pageable)
         return ResponseEntity.ok(ResponseMessage("Products retrieved successfully", products))
@@ -90,7 +97,13 @@ class ProductController @Autowired constructor(
             if (products.isNotEmpty()) {
                 ResponseEntity.ok(ResponseObject(HttpStatus.OK.value(), "Products found", products))
             } else {
-                ResponseEntity.ok(ResponseObject(HttpStatus.OK.value(), "No products found for type: $productType", emptyList()))
+                ResponseEntity.ok(
+                    ResponseObject(
+                        HttpStatus.OK.value(),
+                        "No products found for type: $productType",
+                        emptyList()
+                    )
+                )
             }
         } catch (e: Exception) {
             ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -110,14 +123,21 @@ class ProductController @Autowired constructor(
 
             if (product != null) {
                 ResponseEntity.ok(
-                    ResponseObject(HttpStatus.OK.value(), "Product found successfully", product))
+                    ResponseObject(HttpStatus.OK.value(), "Product found successfully", product)
+                )
             } else {
                 ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(ResponseObject(HttpStatus.NOT_FOUND.value(), "Product not found", null))
             }
         } catch (e: Exception) {
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ResponseObject(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Error fetching product: ${e.message}", null))
+                .body(
+                    ResponseObject(
+                        HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                        "Error fetching product: ${e.message}",
+                        null
+                    )
+                )
         }
     }
 
@@ -131,7 +151,13 @@ class ProductController @Autowired constructor(
             ResponseEntity.ok(ResponseObject(HttpStatus.OK.value(), "Sizes retrieved successfully", sizes))
         } catch (e: Exception) {
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ResponseObject(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Error fetching sizes: ${e.message}", emptyList()))
+                .body(
+                    ResponseObject(
+                        HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                        "Error fetching sizes: ${e.message}",
+                        emptyList()
+                    )
+                )
         }
     }
 
@@ -143,10 +169,78 @@ class ProductController @Autowired constructor(
             val colors = productService.getListColorBySkuBase(skuBase)
 
             ResponseEntity.ok(
-                ResponseObject(HttpStatus.OK.value(), "Colors retrieved successfully", colors))
+                ResponseObject(HttpStatus.OK.value(), "Colors retrieved successfully", colors)
+            )
         } catch (e: Exception) {
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ResponseObject(HttpStatus.INTERNAL_SERVER_ERROR.value(), "Error fetching colors: ${e.message}", emptyList()))
+                .body(
+                    ResponseObject(
+                        HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                        "Error fetching colors: ${e.message}",
+                        emptyList()
+                    )
+                )
         }
+    }
+
+    @PostMapping("/wishlist/{userId}/{productId}")
+    fun addToWishlist(
+        @PathVariable userId: String,
+        @PathVariable productId: String
+    ): ResponseEntity<ResponseMessage<Product>> {
+        return try {
+            productService.addToWishlist(userId, productId)
+            val product = productService.getProductById(ObjectId(productId))
+            ResponseEntity.ok(ResponseMessage("Product added to wishlist successfully", product))
+        } catch (e: CustomException) {
+            ResponseEntity.status(e.status)
+                .body(ResponseMessage("Error adding product to wishlist: ${e.message}", null))
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseMessage("An unexpected error occurred: ${e.message}", null))
+        }
+    }
+
+    @GetMapping("/wishlist/{userId}")
+    fun getWishlist(@PathVariable userId: String): ResponseEntity<ResponseMessage<List<ProductDetailsResponse>>> {
+        return try {
+            val wishlist = productService.getWishlist(userId)
+            val productDetails = wishlist.map { product ->
+                ProductDetailsResponse(
+                    id = product.productId.toString(),
+                    name = product.productName,
+                    price = product.price,
+                    description = product.description
+                )
+            }
+            ResponseEntity.ok(ResponseMessage("Wishlist retrieved successfully", productDetails))
+        } catch (e: CustomException) {
+            ResponseEntity.status(e.status)
+                .body(ResponseMessage("Error retrieving wishlist: ${e.message}", emptyList()))
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseMessage("An unexpected error occurred: ${e.message}", emptyList()))
+        }
+    }
+
+    @PostMapping("/reviews/{productId}")
+    fun addReview(
+        @PathVariable productId: String,
+        @RequestBody reviewRequest: ReviewRequest
+    ): ResponseEntity<ResponseObject<Review>> {
+        val review = productService.addReview(
+            ObjectId(productId),
+            reviewRequest.userId,
+            reviewRequest.rating,
+            reviewRequest.comment
+        )
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(ResponseObject(HttpStatus.CREATED.value(), "Review added successfully", review))
+    }
+
+    @GetMapping("/reviews/{productId}")
+    fun getReviewsByProductId(@PathVariable productId: String): ResponseEntity<ResponseMessage<List<Review>>> {
+        val reviews = productService.getReviewsByProductId(ObjectId(productId))
+        return ResponseEntity.ok(ResponseMessage("Reviews retrieved successfully", reviews))
     }
 }
