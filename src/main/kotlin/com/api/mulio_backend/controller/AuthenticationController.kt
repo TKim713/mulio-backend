@@ -5,6 +5,7 @@ import com.api.mulio_backend.helper.request.CreateUserRequest
 import com.api.mulio_backend.helper.request.JwtRequest
 import com.api.mulio_backend.helper.response.CreateUserResponse
 import com.api.mulio_backend.helper.response.JwtResponse
+import com.api.mulio_backend.helper.response.LoginResponse
 import com.api.mulio_backend.helper.response.ResponseObject
 import com.api.mulio_backend.service.AuthenticationService
 import com.api.mulio_backend.service.UserService
@@ -22,11 +23,11 @@ class AuthenticationController @Autowired constructor(
 ) {
 
     @PostMapping("/authenticate")
-    fun login(@RequestBody authenticationRequest: JwtRequest): ResponseEntity<ResponseObject<JwtResponse>> {
+    fun login(@RequestBody authenticationRequest: JwtRequest): ResponseEntity<ResponseObject<LoginResponse>> {
         return try {
-            val jwtResponse = authenticationService.authenticate(authenticationRequest)
+            val loginResponse = authenticationService.authenticate(authenticationRequest)
             ResponseEntity.status(HttpStatus.OK)
-                .body(ResponseObject(HttpStatus.OK.value(), "Authentication successful", jwtResponse))
+                .body(ResponseObject(HttpStatus.OK.value(), "Authentication successful", loginResponse))
         } catch (e: CustomException) {
             // Handle custom exceptions based on their specific HTTP status
             ResponseEntity.status(e.status)

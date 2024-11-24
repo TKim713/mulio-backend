@@ -6,7 +6,10 @@ import com.api.mulio_backend.helper.enums.TokenType
 import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.JwtRequest
 import com.api.mulio_backend.helper.response.JwtResponse
+import com.api.mulio_backend.helper.response.LoginResponse
 import com.api.mulio_backend.model.Token
+import com.api.mulio_backend.model.User
+import com.api.mulio_backend.repository.CartRepository
 import com.api.mulio_backend.repository.TokenRepository
 import com.api.mulio_backend.repository.UserRepository
 import com.api.mulio_backend.service.AuthenticationService
@@ -25,16 +28,18 @@ class AuthenticationServiceImpl @Autowired constructor(
     private val jwtTokenUtil: JwtTokenUtil,
     private val jwtUserDetailsService: JwtUserDetailsService,
     private val userRepository: UserRepository,
-    private val tokenRepository: TokenRepository
+    private val tokenRepository: TokenRepository,
+    private val cartRepository: CartRepository
 ) : AuthenticationService {
 
     private val now: Date = Date()
 
     @Throws(CustomException::class)
-    override fun authenticate(authenticationRequest: JwtRequest): JwtResponse {
+    override fun authenticate(authenticationRequest: JwtRequest): LoginResponse {
+        val user: User?
         try {
             // Kiểm tra người dùng đã kích hoạt tài khoản hay chưa
-            val user = userRepository.findByEmail(authenticationRequest.email)
+            user = userRepository.findByEmail(authenticationRequest.email)
             if (user != null && !user.enabled) {
                 throw CustomException("ACCOUNT_NOT_VERIFIED", HttpStatus.FORBIDDEN)
             }
@@ -53,6 +58,7 @@ class AuthenticationServiceImpl @Autowired constructor(
             throw CustomException(e.message ?: "Authentication failed", HttpStatus.BAD_REQUEST)
         }
 
+        user ?: throw CustomException("USER_NOT_FOUND", HttpStatus.NOT_FOUND)
         val userDetails: UserDetails = jwtUserDetailsService.loadUserByUsername(authenticationRequest.email)
         val accessToken = jwtTokenUtil.generateToken(userDetails)
         val refreshToken = jwtTokenUtil.generateRefreshToken(userDetails)
@@ -69,7 +75,16 @@ class AuthenticationServiceImpl @Autowired constructor(
         )
         tokenRepository.save(newToken)
 
-        return JwtResponse(accessToken, refreshToken)
+        val cartId = cartRepository.findByUserId(user.userId)?.cartId ?: "CartNotFound"
+
+        return LoginResponse(
+            userId = user.userId,
+            cartId = cartId,
+            token = JwtResponse(
+                accessToken = accessToken,
+                refreshToken = refreshToken
+            )
+        )
     }
 
     override fun logout(tokenStr: String) {

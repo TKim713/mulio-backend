@@ -56,8 +56,6 @@ class UserServiceImpl @Autowired constructor(
             createdAt = now
         )
 
-        val savedUser = userRepository.save(user)
-
         // Tạo token xác thực
         val tokenStr = UUID.randomUUID().toString()
         val token = Token(
@@ -65,9 +63,11 @@ class UserServiceImpl @Autowired constructor(
             accessToken = tokenStr,
             expired = false,
             revoked = false,
-            user = savedUser.email,
+            user = userRequest.email,
             createdAt = now
         )
+
+        val savedUser = userRepository.save(user)
         val savedToken = tokenRepository.save(token)
 
         // Gửi email xác thực với tên người dùng
