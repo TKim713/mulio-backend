@@ -171,7 +171,13 @@ class ProductServiceImpl @Autowired constructor(
     }
 
     override fun addToWishlist(userId: String, productId: String) {
-        val wishlist = wishlistRepository.findByUserId(userId) ?: Wishlist(userId = userId)
+        val existingUser = userRepository.findById(userId).orElseThrow {
+            CustomException("User not found", HttpStatus.NOT_FOUND)
+        }
+        val existingProduct = productRepository.findById(productId.toString()).orElseThrow {
+            CustomException("Product not found", HttpStatus.NOT_FOUND)
+        }
+        val wishlist = wishlistRepository.findByUserId(userId) ?: Wishlist(userId = existingUser.userId)
         if (!wishlist.productIds.contains(productId)) {
             wishlist.productIds.add(productId)
             wishlistRepository.save(wishlist)
