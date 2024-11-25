@@ -4,6 +4,7 @@ import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.CreateProductRequest
 import com.api.mulio_backend.helper.request.ReviewRequest
 import com.api.mulio_backend.helper.response.ProductResponse
+import com.api.mulio_backend.helper.response.ReviewResponse
 import com.api.mulio_backend.model.Product
 import com.api.mulio_backend.model.Review
 import com.api.mulio_backend.model.Wishlist
@@ -260,12 +261,29 @@ class ProductServiceImpl @Autowired constructor(
         return reviewRepository.findAll().filter { it.productId == productId }
     }
 
-    override fun getReviewsBySkuBase(skuBase: String): List<Review> {
+    override fun getReviewsBySkuBase(skuBase: String): List<ReviewResponse> {
+        // Fetch products with the given skuBase
         val products = productRepository.findBySkuBase(skuBase)
 
+        // Extract productIds
         val productIds = products.map { it.productId }
 
-        return reviewRepository.findAll().filter { it.productId in productIds }
+        // Fetch reviews for those productIds
+        val reviews = reviewRepository.findAll().filter { it.productId in productIds }
+
+        // Map Review to ReviewResponse
+        return reviews.map { review ->
+            val product = products.find { it.productId == review.productId }
+            ReviewResponse(
+                id = review.id.toString(),
+                productId = review.productId.toString(),
+                userId = review.userId,
+                userName = userRepository.findById(review.userId).orElse(null).username, // Example function to fetch user name
+                rating = review.rating,
+                comment = review.comment,
+                images = product?.images ?: emptyList()
+            )
+        }
     }
 
 }

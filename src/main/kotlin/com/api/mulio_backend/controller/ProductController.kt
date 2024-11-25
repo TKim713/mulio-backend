@@ -3,11 +3,8 @@ package com.api.mulio_backend.controller
 import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.CreateProductRequest
 import com.api.mulio_backend.helper.request.ReviewRequest
-import com.api.mulio_backend.helper.response.ProductResponse
-import com.api.mulio_backend.helper.response.ResponseMessage
-import com.api.mulio_backend.helper.response.ResponseObject
+import com.api.mulio_backend.helper.response.*
 import com.api.mulio_backend.model.Product
-import com.api.mulio_backend.helper.response.ProductDetailsResponse
 import com.api.mulio_backend.model.Review
 import com.api.mulio_backend.service.ProductService
 import org.springframework.beans.factory.annotation.Autowired
@@ -143,7 +140,7 @@ class ProductController @Autowired constructor(
     }
 
     @GetMapping("/by-sku/{skuBase}/reviews")
-    fun getReviewsBySkuBase(@PathVariable skuBase: String): ResponseEntity<ResponseMessage<List<Review>>> {
+    fun getReviewsBySkuBase(@PathVariable skuBase: String): ResponseEntity<ResponseMessage<List<ReviewResponse>>> {
         val reviews = productService.getReviewsBySkuBase(skuBase)
         return ResponseEntity.ok(ResponseMessage("Reviews retrieved successfully", reviews))
     }
