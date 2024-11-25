@@ -2,6 +2,7 @@ package com.api.mulio_backend.service.impl
 
 import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.CreateProductRequest
+import com.api.mulio_backend.helper.request.ReviewRequest
 import com.api.mulio_backend.helper.response.ProductResponse
 import com.api.mulio_backend.model.Product
 import com.api.mulio_backend.model.Review
@@ -127,17 +128,33 @@ class ProductServiceImpl @Autowired constructor(
     override fun getProductsBySkuBase(skuBase: String): List<ProductResponse> {
         val products = productRepository.findBySkuBase(skuBase)
 
+        val productIds = products.map { it.productId }
+        val reviews = reviewRepository.findByProductIdIn(productIds)
+
         return products.groupBy { it.skuBase }.map { (skuBase, productList) ->
-            val product = productList.first() // Assuming all products have the same skuBase
+            val product = productList.first()
+
+            val relevantReviews = reviews.filter { review ->
+                productList.any { it.productId == review.productId }
+            }
+            val totalRating = relevantReviews.size
+            val averageRating = if (totalRating > 0) {
+                relevantReviews.sumOf { it.rating.toDouble() } / totalRating
+            } else {
+                0.0
+            }
+
+            val formattedAverageRating = String.format("%.1f", averageRating).toFloat()
+
             ProductResponse(
-                productId = product.productId.toString(),
                 skuBase = product.skuBase,
-                skuCode = product.skuCode,
                 productName = product.productName,
                 price = product.price,
                 description = product.description,
                 status = product.status,
                 productType = product.productType,
+                averageRating = formattedAverageRating,
+                totalRating = totalRating,
                 sizes = productList.mapNotNull { it.size }.distinct(),
                 colors = productList.map { it.color }.distinct(),
                 images = productList.flatMap { it.images }.distinct(),
@@ -223,19 +240,32 @@ class ProductServiceImpl @Autowired constructor(
         return productRepository.findAllById(wishlist.productIds)
     }
 
-    override fun addReview(productId: ObjectId, userId: String, rating: Int, comment: String): Review {
-        val existingUser = userRepository.findById(userId).orElseThrow {
+    override fun addReview(productId: ObjectId, reviewRequest: ReviewRequest): Review {
+        val existingUser = userRepository.findById(reviewRequest.userId).orElseThrow {
             CustomException("User not found", HttpStatus.NOT_FOUND)
         }
         val existingProduct = productRepository.findById(productId.toString()).orElseThrow {
             CustomException("Product not found", HttpStatus.NOT_FOUND)
         }
-        val review = Review(productId = existingProduct.productId, userId = existingUser.userId, rating = rating, comment = comment)
+        val review = Review(
+            productId = existingProduct.productId,
+            userId = existingUser.userId,
+            rating = reviewRequest.rating,
+            comment = reviewRequest.comment,
+            images = reviewRequest.images)
         return reviewRepository.save(review)
     }
 
     override fun getReviewsByProductId(productId: ObjectId): List<Review> {
         return reviewRepository.findAll().filter { it.productId == productId }
+    }
+
+    override fun getReviewsBySkuBase(skuBase: String): List<Review> {
+        val products = productRepository.findBySkuBase(skuBase)
+
+        val productIds = products.map { it.productId }
+
+        return reviewRepository.findAll().filter { it.productId in productIds }
     }
 
 }

@@ -15,5 +15,6 @@ data class Review(
     val userId: String,
     val rating: Int,
     val comment: String,
+    var images: List<String> = emptyList(),
     val createdAt: LocalDateTime = LocalDateTime.now()
 )

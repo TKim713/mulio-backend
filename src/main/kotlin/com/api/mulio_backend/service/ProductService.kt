@@ -1,6 +1,7 @@
 package com.api.mulio_backend.service
 
 import com.api.mulio_backend.helper.request.CreateProductRequest
+import com.api.mulio_backend.helper.request.ReviewRequest
 import com.api.mulio_backend.helper.response.ProductResponse
 import com.api.mulio_backend.model.Product
 import com.api.mulio_backend.model.Review
@@ -22,6 +23,7 @@ interface ProductService {
     fun getListColorBySkuBase(skuBaseName: String): List<String>
     fun addToWishlist(userId: String, productId: String)
     fun getWishlist(userId: String): List<Product>
-    fun addReview(productId: ObjectId, userId: String, rating: Int, comment: String): Review
+    fun addReview(productId: ObjectId, reviewRequest: ReviewRequest): Review
     fun getReviewsByProductId(productId: ObjectId): List<Review>
+    fun getReviewsBySkuBase(skuBase: String): List<Review>
 }

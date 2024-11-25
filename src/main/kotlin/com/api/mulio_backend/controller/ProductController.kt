@@ -142,6 +142,12 @@ class ProductController @Autowired constructor(
         }
     }
 
+    @GetMapping("/by-sku/{skuBase}/reviews")
+    fun getReviewsBySkuBase(@PathVariable skuBase: String): ResponseEntity<ResponseMessage<List<Review>>> {
+        val reviews = productService.getReviewsBySkuBase(skuBase)
+        return ResponseEntity.ok(ResponseMessage("Reviews retrieved successfully", reviews))
+    }
+
     @GetMapping("/sizes/{skuBase}")
     fun getListSizeBySkuBase(
         @PathVariable skuBase: String
@@ -232,9 +238,7 @@ class ProductController @Autowired constructor(
         return try {
             val review = productService.addReview(
                 ObjectId(productId),
-                reviewRequest.userId,
-                reviewRequest.rating,
-                reviewRequest.comment
+                reviewRequest
             )
             ResponseEntity.status(HttpStatus.CREATED)
                 .body(ResponseObject(HttpStatus.CREATED.value(), "Review added successfully", review))
