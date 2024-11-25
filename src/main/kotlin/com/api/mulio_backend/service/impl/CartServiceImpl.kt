@@ -42,6 +42,20 @@ class CartServiceImpl @Autowired constructor(
         val updatedProducts = existingCart.products.toMutableList()
 
         val existingItem = updatedProducts.find { it.productId == productId }
+        val totalRequestedAmount = if (existingItem != null) {
+            existingItem.totalAmount + cartRequest.amount
+        } else {
+            cartRequest.amount
+        }
+
+        // Check if the requested amount exceeds the stock
+        if (totalRequestedAmount > product.amount!!) {
+            throw CustomException(
+                "Requested amount exceeds available stock for product: ${product.productName}. Available stock: ${product.amount}",
+                HttpStatus.BAD_REQUEST
+            )
+        }
+
         if (existingItem != null) {
             existingItem.totalAmount += cartRequest.amount
             existingItem.totalPrice = existingItem.totalAmount * product.price
@@ -112,6 +126,13 @@ class CartServiceImpl @Autowired constructor(
 
         val existingItem = updatedProducts.find { it.productId == productId }
         if (existingItem != null) {
+            if (cartRequest.amount > product.amount!!) {
+                throw CustomException(
+                    "Requested amount exceeds available stock for product: ${product.productName}. Available stock: ${product.amount}",
+                    HttpStatus.BAD_REQUEST
+                )
+            }
+
             if (cartRequest.amount > 0) {
                 existingItem.totalAmount = cartRequest.amount
                 existingItem.totalPrice = existingItem.totalAmount * product.price
@@ -270,6 +291,7 @@ class CartServiceImpl @Autowired constructor(
                 size = productDetails.size,
                 color = productDetails.color,
                 amount = cartProduct.totalAmount,
+                limit = productDetails.amount,
                 productType = productDetails.productType,
                 image = productDetails.images,
                 totalPrice = cartProduct.totalPrice
