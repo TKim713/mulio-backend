@@ -7,7 +7,7 @@ import com.api.mulio_backend.helper.response.ProductResponse
 import com.api.mulio_backend.helper.response.ResponseMessage
 import com.api.mulio_backend.helper.response.ResponseObject
 import com.api.mulio_backend.model.Product
-import com.api.mulio_backend.model.ProductDetailsResponse
+import com.api.mulio_backend.helper.response.ProductDetailsResponse
 import com.api.mulio_backend.model.Review
 import com.api.mulio_backend.service.ProductService
 import org.springframework.beans.factory.annotation.Autowired

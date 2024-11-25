@@ -1,4 +1,4 @@
-package com.api.mulio_backend.model
+package com.api.mulio_backend.helper.response
 
 data class ProductDetailsResponse(
     val productId: String,

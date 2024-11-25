@@ -170,7 +170,10 @@ class ProductServiceImpl @Autowired constructor(
         "trắng" to "WH",  // Màu trắng
         "xám" to "GY",   // Màu xám
         "hồng" to "PK",    // Màu hồng
-        "bạc" to "GRY"
+        "bạc" to "GRY",
+        "nâu" to "BRW",
+        "cam" to "ORNG",
+        "be" to "BEIGE"
     )
 
     override fun getProductBySkuBaseAndAttributes(skuBase: String, color: String, size: String?): Product? {
