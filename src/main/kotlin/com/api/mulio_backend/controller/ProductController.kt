@@ -3,6 +3,7 @@ package com.api.mulio_backend.controller
 import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.CreateProductRequest
 import com.api.mulio_backend.helper.request.ReviewRequest
+import com.api.mulio_backend.helper.response.ProductResponse
 import com.api.mulio_backend.helper.response.ResponseMessage
 import com.api.mulio_backend.helper.response.ResponseObject
 import com.api.mulio_backend.model.Product
@@ -84,9 +85,9 @@ class ProductController @Autowired constructor(
 
     // Lấy theo sku base code
     @GetMapping("/by-sku")
-    fun getProductsBySkuBase(@RequestParam skuBase: String): ResponseEntity<ResponseMessage<List<Product>>> {
-        val products = productService.getProductsBySkuBase(skuBase)
-        return ResponseEntity.ok(ResponseMessage("Products retrieved successfully", products))
+    fun getProductsBySkuBase(@RequestParam skuBase: String): ResponseEntity<ResponseObject<List<ProductResponse>>> {
+        val groupedProducts = productService.getProductsBySkuBase(skuBase)
+        return ResponseEntity.ok(ResponseObject(HttpStatus.OK.value(), "Products retrieved successfully", groupedProducts))
     }
 
     // Lấy theo product type

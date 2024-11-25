@@ -1,6 +1,7 @@
 package com.api.mulio_backend.service
 
 import com.api.mulio_backend.helper.request.CreateProductRequest
+import com.api.mulio_backend.helper.response.ProductResponse
 import com.api.mulio_backend.model.Product
 import com.api.mulio_backend.model.Review
 import org.bson.types.ObjectId
@@ -14,7 +15,7 @@ interface ProductService {
     fun deleteProduct(productId: ObjectId): Boolean
     fun getAllProducts(): List<Product>
     fun getProducts(pageable: Pageable): Page<Product>
-    fun getProductsBySkuBase(skuBase: String): List<Product>
+    fun getProductsBySkuBase(skuBase: String): List<ProductResponse>
     fun getProductByProductType(productType: String): List<Product>
     fun getProductBySkuBaseAndAttributes(skuBase: String, color: String, size: String?): Product?
     fun getListSizeBySkuBase(skuBase: String): List<String?>

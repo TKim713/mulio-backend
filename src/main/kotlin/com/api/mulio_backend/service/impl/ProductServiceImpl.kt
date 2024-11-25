@@ -2,6 +2,7 @@ package com.api.mulio_backend.service.impl
 
 import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.CreateProductRequest
+import com.api.mulio_backend.helper.response.ProductResponse
 import com.api.mulio_backend.model.Product
 import com.api.mulio_backend.model.Review
 import com.api.mulio_backend.model.Wishlist
@@ -123,8 +124,25 @@ class ProductServiceImpl @Autowired constructor(
         return productRepository.findAll(pageable)
     }
 
-    override fun getProductsBySkuBase(skuBase: String): List<Product> {
-        return productRepository.findBySkuBase(skuBase)
+    override fun getProductsBySkuBase(skuBase: String): List<ProductResponse> {
+        val products = productRepository.findBySkuBase(skuBase)
+
+        return products.groupBy { it.skuBase }.map { (skuBase, productList) ->
+            val product = productList.first() // Assuming all products have the same skuBase
+            ProductResponse(
+                productId = product.productId.toString(),
+                skuBase = product.skuBase,
+                skuCode = product.skuCode,
+                productName = product.productName,
+                price = product.price,
+                description = product.description,
+                status = product.status,
+                productType = product.productType,
+                sizes = productList.mapNotNull { it.size }.distinct(),
+                colors = productList.map { it.color }.distinct(),
+                images = productList.flatMap { it.images }.distinct(),
+            )
+        }
     }
 
     override fun getProductByProductType(productType: String): List<Product> {
@@ -136,9 +154,10 @@ class ProductServiceImpl @Autowired constructor(
     }
 
     // Phương thức để tạo SKU code
-    fun generateSkuCode(skuBase: String, size: String, color: String): String {
+    fun generateSkuCode(skuBase: String, size: String?, color: String): String {
         val colorCode = getColorCode(color)  // Lấy mã màu từ bảng màu
-        return "$skuBase-$size-$colorCode"
+        val sizePart = size?.let { "-$it" } ?: ""
+        return "$skuBase$sizePart-$colorCode"
     }
 
     // Danh sách các màu và mã màu tương ứng
@@ -159,8 +178,8 @@ class ProductServiceImpl @Autowired constructor(
 
         val isAccessory = products.any { it.productType == "Phụ kiện" }
 
-        if (!isAccessory && size != null) {
-            throw CustomException("Size parameter is not allowed for non-accessory products.", HttpStatus.BAD_REQUEST)
+        if (isAccessory && size != null) {
+            throw CustomException("Size parameter is not allowed for accessory products.", HttpStatus.BAD_REQUEST)
         }
 
         return if (isAccessory) {

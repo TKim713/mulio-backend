@@ -1,19 +1,15 @@
 package com.api.mulio_backend.helper.response
 
-import java.util.Date
-
 data class ProductResponse(
-    val productId: String,
-    var productName: String,
-    var price: Float,
-    var description: String,
-    var size: String,
-    var color: String,
-    var amount: Int,
-    var status: String,
-    var productType: String,
-    var image: String,
-    var createdAt: Date,
-    var updatedAt: Date?,
-    var deletedAt: Date?
+    val productId: String? = null,
+    val skuBase: String? = null,
+    val skuCode: String? = null,
+    val productName: String? = null,
+    val price: Float? = null,
+    val description: String? = null,
+    val status: String? = null,
+    val productType: String? = null,
+    val sizes: List<String> = emptyList(),
+    val colors: List<String> = emptyList(),
+    val images: List<String> = emptyList()
 )
