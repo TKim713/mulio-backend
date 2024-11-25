@@ -281,7 +281,8 @@ class ProductServiceImpl @Autowired constructor(
                 userName = userRepository.findById(review.userId).orElse(null).username, // Example function to fetch user name
                 rating = review.rating,
                 comment = review.comment,
-                images = product?.images ?: emptyList()
+                images = product?.images ?: emptyList(),
+                createdAt = review.createdAt.toString(),
             )
         }
     }
