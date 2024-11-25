@@ -116,7 +116,7 @@ class ProductController @Autowired constructor(
     fun getProductBySkuBaseAndAttributes(
         @PathVariable skuBase: String,
         @RequestParam color: String,
-        @RequestParam size: String
+        @RequestParam(required = false) size: String?
     ): ResponseEntity<ResponseObject<Product>> {
         return try {
             val product = productService.getProductBySkuBaseAndAttributes(skuBase, color, size)
@@ -144,7 +144,7 @@ class ProductController @Autowired constructor(
     @GetMapping("/sizes/{skuBase}")
     fun getListSizeBySkuBase(
         @PathVariable skuBase: String
-    ): ResponseEntity<ResponseObject<List<String>>> {
+    ): ResponseEntity<ResponseObject<List<String?>>> {
         return try {
             val sizes = productService.getListSizeBySkuBase(skuBase)
 

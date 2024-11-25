@@ -154,11 +154,23 @@ class ProductServiceImpl @Autowired constructor(
         "bạc" to "GRY"
     )
 
-    override fun getProductBySkuBaseAndAttributes(skuBase: String, color: String, size: String): Product? {
-        return productRepository.findBySkuBaseAndColorAndSize(skuBase, color, size)
+    override fun getProductBySkuBaseAndAttributes(skuBase: String, color: String, size: String?): Product? {
+        val products = productRepository.findBySkuBase(skuBase)
+
+        val isAccessory = products.any { it.productType == "Phụ kiện" }
+
+        if (!isAccessory && size != null) {
+            throw CustomException("Size parameter is not allowed for non-accessory products.", HttpStatus.BAD_REQUEST)
+        }
+
+        return if (isAccessory) {
+            productRepository.findBySkuBaseAndColor(skuBase, color)
+        } else {
+            productRepository.findBySkuBaseAndColorAndSize(skuBase, color, size)
+        }
     }
 
-    override fun getListSizeBySkuBase(skuBase: String): List<String> {
+    override fun getListSizeBySkuBase(skuBase: String): List<String?> {
         val products = productRepository.findBySkuBase(skuBase)
 
         return products.map { it.size }.distinct().takeIf { it.isNotEmpty() } ?: emptyList()

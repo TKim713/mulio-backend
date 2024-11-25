@@ -8,6 +8,7 @@ import com.api.mulio_backend.helper.request.ChangePasswordRequest
 import com.api.mulio_backend.helper.request.CreateUserRequest
 import com.api.mulio_backend.helper.response.CartResponse
 import com.api.mulio_backend.helper.response.CreateUserResponse
+import com.api.mulio_backend.helper.response.ResponseObject
 import com.api.mulio_backend.helper.response.UserResponse
 import com.api.mulio_backend.model.Cart
 import com.api.mulio_backend.model.Customer
@@ -82,12 +83,12 @@ class UserServiceImpl @Autowired constructor(
     }
 
     // Method xác thực email
-    override fun verifyEmail(tokenStr: String): String {
+    override fun verifyEmail(tokenStr: String): ResponseObject<String> {
         val token = tokenRepository.findByAccessToken(tokenStr)
         return if (token != null && !token.expired && !token.revoked) {
             val user = userRepository.findByEmail(token.user)
 
-            return if (user != null) {
+            if (user != null) {
                 user.enabled = true // Kích hoạt tài khoản user
                 userRepository.save(user)
 
@@ -98,13 +99,13 @@ class UserServiceImpl @Autowired constructor(
                 tokenRepository.save(token)
 
                 val newCart = Cart(
-                        cartId = UUID.randomUUID().toString(),
-                        userId = user.userId,
-                        products = emptyList(),
-                        totalNumber = 0,
-                        totalPrice = 0f,
-                        createdAt = now
-                    )
+                    cartId = UUID.randomUUID().toString(),
+                    userId = user.userId,
+                    products = emptyList(),
+                    totalNumber = 0,
+                    totalPrice = 0f,
+                    createdAt = now
+                )
 
                 // Tạo customer
                 val customer = Customer(
@@ -116,15 +117,15 @@ class UserServiceImpl @Autowired constructor(
                     createdAt = now
                 )
                 customerRepository.save(customer)
-                val savedCart = newCart.let { cartRepository.save(it) }
-                mapData.mapOne(savedCart, CartResponse::class.java)
 
-                "Xác thực email thành công!"
+                cartRepository.save(newCart)
+
+                ResponseObject(HttpStatus.OK.value(), "Xác thực email thành công!", "")
             } else {
-                "Người dùng không tìm thấy!"
+                ResponseObject(HttpStatus.NOT_FOUND.value(), "Người dùng không tìm thấy!", "")
             }
         } else {
-            "Liên kết xác minh không hợp lệ hoặc đã hết hạn!"
+            ResponseObject(HttpStatus.BAD_REQUEST.value(), "Liên kết xác minh không hợp lệ hoặc đã hết hạn!", "")
         }
     }
 

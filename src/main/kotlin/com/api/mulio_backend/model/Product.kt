@@ -17,7 +17,7 @@ data class Product(
     var productName: String,
     var price: Float,
     var description: String,
-    var size: String,
+    var size: String? = null,
     var color: String,
     var amount: Int? = 0,
     var status: String,

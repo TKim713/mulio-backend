@@ -55,19 +55,10 @@ class AuthenticationController @Autowired constructor(
     }
 
     @GetMapping("/verify")
-    fun verifyUser(@RequestParam token: String): ResponseEntity<String> {
-        val message = userService.verifyEmail(token)
-        return when {
-            message.contains("Xác thực email thành công!") -> {
-                ResponseEntity.ok(message)
-            }
-            message.contains("Người dùng không tìm thấy!") -> {
-                ResponseEntity.status(HttpStatus.NOT_FOUND).body(message)
-            }
-            else -> {
-                ResponseEntity.status(HttpStatus.BAD_REQUEST).body(message)
-            }
-        }
+    fun verifyUser(@RequestParam token: String): ResponseEntity<ResponseObject<String>> {
+        val responseObject = userService.verifyEmail(token)
+        return ResponseEntity.status(responseObject.status)
+            .body(responseObject)
     }
 
     @PostMapping("/logout")

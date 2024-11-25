@@ -16,8 +16,8 @@ interface ProductService {
     fun getProducts(pageable: Pageable): Page<Product>
     fun getProductsBySkuBase(skuBase: String): List<Product>
     fun getProductByProductType(productType: String): List<Product>
-    fun getProductBySkuBaseAndAttributes(skuBase: String, color: String, size: String): Product?
-    fun getListSizeBySkuBase(skuBase: String): List<String>
+    fun getProductBySkuBaseAndAttributes(skuBase: String, color: String, size: String?): Product?
+    fun getListSizeBySkuBase(skuBase: String): List<String?>
     fun getListColorBySkuBase(skuBaseName: String): List<String>
     fun addToWishlist(userId: String, productId: String)
     fun getWishlist(userId: String): List<Product>
