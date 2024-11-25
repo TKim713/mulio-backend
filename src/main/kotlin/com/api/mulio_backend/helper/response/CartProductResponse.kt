@@ -11,6 +11,6 @@ data class CartProductResponse(
     val color: String? = null,
     val amount: Int? = null,
     val productType: String? = null,
-    val image: String? = null,
+    val image: List<String> = emptyList(),
     val totalPrice: Float? = null,
 )

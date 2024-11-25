@@ -10,5 +10,5 @@ data class CreateProductRequest(
     var amount: Int?=0,
     var status: String,
     var productType: String,
-    var images: String
+    var images: List<String> = emptyList()
 )

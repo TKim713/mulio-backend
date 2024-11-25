@@ -22,7 +22,7 @@ data class Product(
     var amount: Int? = 0,
     var status: String,
     var productType: String,
-    var images: String,
+    var images: List<String> = emptyList(),
     var createdAt: Date,
     var updatedAt: Date? = null,
     val deletedAt: Date? = null
