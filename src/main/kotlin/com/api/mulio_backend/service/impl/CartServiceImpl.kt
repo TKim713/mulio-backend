@@ -202,52 +202,31 @@ class CartServiceImpl @Autowired constructor(
             CustomException("Cart not found", HttpStatus.NOT_FOUND)
         }
 
+        if (existingCart.products.isEmpty()) {
+            throw CustomException("No items in the cart to checkout", HttpStatus.BAD_REQUEST)
+        }
+
         val checkoutProducts = mutableListOf<CartProduct>()
 
         existingCart.products.forEach { cartProduct ->
-            val itemToCheckout = checkoutRequest.itemsToCheckout.find { it.productId == cartProduct.productId }
-
-            if (itemToCheckout != null) {
-                if (itemToCheckout.totalAmount > cartProduct.totalAmount) {
-                    throw CustomException(
-                        "Requested amount for product ${cartProduct.productId} exceeds available quantity",
-                        HttpStatus.BAD_REQUEST
-                    )
-                }
-
-                cartProduct.totalAmount -= itemToCheckout.totalAmount
-
-                checkoutProducts.add(
-                    CartProduct(
-                        productId = cartProduct.productId,
-                        totalPrice = cartProduct.totalPrice,
-                        totalAmount = itemToCheckout.totalAmount
-                    )
-                )
-
-                val product = productRepository.findById(cartProduct.productId).orElseThrow {
-                    CustomException("Product not found", HttpStatus.NOT_FOUND)
-                }
-
-                if (product.amount!! < itemToCheckout.totalAmount) {
-                    throw CustomException(
-                        "Not enough stock for product ${product.productId}",
-                        HttpStatus.BAD_REQUEST
-                    )
-                }
-
-                product.amount = product.amount?.minus(itemToCheckout.totalAmount)
-                productRepository.save(product)
+            val product = productRepository.findById(cartProduct.productId).orElseThrow {
+                CustomException("Product not found", HttpStatus.NOT_FOUND)
             }
-        }
 
-        val remainingProducts = existingCart.products.filter { it.totalAmount > 0 }
-        existingCart.products = remainingProducts
+            if (product.amount!! < cartProduct.totalAmount) {
+                throw CustomException(
+                    "Not enough stock for product ${product.productId}",
+                    HttpStatus.BAD_REQUEST
+                )
+            }
 
-        val totalPrice = checkoutProducts.fold(0f) { acc, item -> acc + item.totalPrice }
-
-        if (checkoutRequest.totalPrice != totalPrice) {
-            throw CustomException("Total price mismatch", HttpStatus.BAD_REQUEST)
+            checkoutProducts.add(
+                CartProduct(
+                    productId = cartProduct.productId,
+                    totalPrice = cartProduct.totalPrice,
+                    totalAmount = cartProduct.totalAmount
+                )
+            )
         }
 
         val order = Order(
@@ -260,16 +239,28 @@ class CartServiceImpl @Autowired constructor(
             district = checkoutRequest.district,
             ward = checkoutRequest.ward,
             paymentMethod = checkoutRequest.paymentMethod,
-            totalPrice = totalPrice,
+            totalPrice = existingCart.totalPrice,
             orderDate = now,
             orderProduct = checkoutProducts,
             createdAt = now
         )
+
         val savedOrder = orderRepository.save(order)
 
-        existingCart.totalNumber = remainingProducts.sumOf { it.totalAmount }
-        existingCart.totalPrice = remainingProducts.fold(0f) { acc, item -> acc + (item.totalPrice * item.totalAmount) }
+        existingCart.products.forEach { cartProduct ->
+            val product = productRepository.findById(cartProduct.productId).orElseThrow {
+                CustomException("Product not found", HttpStatus.NOT_FOUND)
+            }
+
+            product.amount = product.amount?.minus(cartProduct.totalAmount)
+            productRepository.save(product)
+        }
+
+        existingCart.products = emptyList()
+        existingCart.totalNumber = 0
+        existingCart.totalPrice = 0f
         existingCart.updatedAt = Date()
+
         cartRepository.save(existingCart)
 
         val response = mapData.mapOne(savedOrder, OrderResponse::class.java)

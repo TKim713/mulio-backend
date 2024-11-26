@@ -7,7 +7,5 @@ data class CheckoutRequest(
     var city: String,
     var district: String,
     var ward: String,
-    var paymentMethod: String,
-    var totalPrice: Float,
-    var itemsToCheckout: List<CartProductRequest>,
+    var paymentMethod: String
 )
