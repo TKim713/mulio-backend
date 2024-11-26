@@ -253,6 +253,9 @@ class CartServiceImpl @Autowired constructor(
             }
 
             product.amount = product.amount?.minus(cartProduct.totalAmount)
+            if (product.amount == 0) {
+                product.status = "OUT_OF_STOCK"
+            }
             productRepository.save(product)
         }
 
