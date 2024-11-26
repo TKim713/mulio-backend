@@ -6,6 +6,7 @@ import com.api.mulio_backend.helper.request.ReviewRequest
 import com.api.mulio_backend.helper.response.*
 import com.api.mulio_backend.model.Product
 import com.api.mulio_backend.model.Review
+import com.api.mulio_backend.repository.ReviewRepository
 import com.api.mulio_backend.service.ProductService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.domain.Page
@@ -14,12 +15,14 @@ import org.springframework.data.domain.Pageable
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import org.bson.types.ObjectId
+import org.springframework.data.domain.PageImpl
 import org.springframework.http.HttpStatus
 
 @RestController
 @RequestMapping("/api/products")
 class ProductController @Autowired constructor(
-    private val productService: ProductService
+    private val productService: ProductService,
+    private val reviewRepository: ReviewRepository
 ) {
 
     // Tạo product
@@ -73,12 +76,14 @@ class ProductController @Autowired constructor(
     @GetMapping("/page")
     fun getProducts(
         @RequestParam(defaultValue = "0") page: Int,
-        @RequestParam(defaultValue = "10") size: Int
+        @RequestParam(defaultValue = "10") size: Int,
+        @RequestParam(required = false) search: String? // New search parameter
     ): ResponseEntity<ResponseMessage<Page<Product>>> {
         val pageable: Pageable = PageRequest.of(page, size)
-        val products = productService.getProducts(pageable)
+        val products = productService.getProducts(pageable, search) // Pass search to service layer
         return ResponseEntity.ok(ResponseMessage("Products retrieved successfully", products))
     }
+
 
     // Lấy theo sku base code
     @GetMapping("/by-sku")
@@ -187,45 +192,6 @@ class ProductController @Autowired constructor(
         }
     }
 
-    @PostMapping("/wishlist/{userId}/{productId}")
-    fun addToWishlist(
-        @PathVariable userId: String,
-        @PathVariable productId: String
-    ): ResponseEntity<ResponseMessage<Product>> {
-        return try {
-            productService.addToWishlist(userId, productId)
-            val product = productService.getProductById(ObjectId(productId))
-            ResponseEntity.ok(ResponseMessage("Product added to wishlist successfully", product))
-        } catch (e: CustomException) {
-            ResponseEntity.status(e.status)
-                .body(ResponseMessage("Error adding product to wishlist: ${e.message}", null))
-        } catch (e: Exception) {
-            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ResponseMessage("An unexpected error occurred: ${e.message}", null))
-        }
-    }
-
-    @GetMapping("/wishlist/{userId}")
-    fun getWishlist(@PathVariable userId: String): ResponseEntity<ResponseMessage<List<ProductDetailsResponse>>> {
-        return try {
-            val wishlist = productService.getWishlist(userId)
-            val productDetails = wishlist.map { product ->
-                ProductDetailsResponse(
-                    productId = product.productId.toString(),
-                    name = product.productName,
-                    price = product.price,
-                    description = product.description
-                )
-            }
-            ResponseEntity.ok(ResponseMessage("Wishlist retrieved successfully", productDetails))
-        } catch (e: CustomException) {
-            ResponseEntity.status(e.status)
-                .body(ResponseMessage("Error retrieving wishlist: ${e.message}", emptyList()))
-        } catch (e: Exception) {
-            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ResponseMessage("An unexpected error occurred: ${e.message}", emptyList()))
-        }
-    }
 
     @PostMapping("/reviews/{productId}")
     fun addReview(

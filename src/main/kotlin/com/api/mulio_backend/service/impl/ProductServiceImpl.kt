@@ -1,5 +1,6 @@
 package com.api.mulio_backend.service.impl
 
+import com.api.mulio_backend.config.JwtTokenUtil
 import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.CreateProductRequest
 import com.api.mulio_backend.helper.request.ReviewRequest
@@ -8,14 +9,12 @@ import com.api.mulio_backend.helper.response.ReviewResponse
 import com.api.mulio_backend.model.Product
 import com.api.mulio_backend.model.Review
 import com.api.mulio_backend.model.Wishlist
-import com.api.mulio_backend.repository.ProductRepository
-import com.api.mulio_backend.repository.ReviewRepository
-import com.api.mulio_backend.repository.UserRepository
-import com.api.mulio_backend.repository.WishlistRepository
+import com.api.mulio_backend.repository.*
 import com.api.mulio_backend.service.ProductService
 import org.bson.types.ObjectId
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
@@ -26,7 +25,9 @@ class ProductServiceImpl @Autowired constructor(
     private val productRepository: ProductRepository,
     private val wishlistRepository: WishlistRepository,
     private val reviewRepository: ReviewRepository,
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val tokenRepository: TokenRepository,
+    private val jwtTokenUtil: JwtTokenUtil
 ) : ProductService {
     private val vietnamTimeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh")
 
@@ -122,45 +123,24 @@ class ProductServiceImpl @Autowired constructor(
         return productRepository.findAll()
     }
 
-    override fun getProducts(pageable: Pageable): Page<Product> {
+    override fun getProducts(pageable: Pageable, search: String?): Page<Product> {
+        if (!search.isNullOrBlank()) {
+            return productRepository.findByProductNameContainingOrDescriptionContaining(search, search, pageable)
+        }
         return productRepository.findAll(pageable)
     }
 
     override fun getProductsBySkuBase(skuBase: String): List<ProductResponse> {
         val products = productRepository.findBySkuBase(skuBase)
 
+        if (products.isEmpty()) {
+            return emptyList()
+        }
+
         val productIds = products.map { it.productId }
         val reviews = reviewRepository.findByProductIdIn(productIds)
 
-        return products.groupBy { it.skuBase }.map { (skuBase, productList) ->
-            val product = productList.first()
-
-            val relevantReviews = reviews.filter { review ->
-                productList.any { it.productId == review.productId }
-            }
-            val totalRating = relevantReviews.size
-            val averageRating = if (totalRating > 0) {
-                relevantReviews.sumOf { it.rating.toDouble() } / totalRating
-            } else {
-                0.0
-            }
-
-            val formattedAverageRating = String.format("%.1f", averageRating).toFloat()
-
-            ProductResponse(
-                skuBase = product.skuBase,
-                productName = product.productName,
-                price = product.price,
-                description = product.description,
-                status = product.status,
-                productType = product.productType,
-                averageRating = formattedAverageRating,
-                totalRating = totalRating,
-                sizes = productList.mapNotNull { it.size }.distinct(),
-                colors = productList.map { it.color }.distinct(),
-                images = productList.flatMap { it.images }.distinct(),
-            )
-        }
+        return mapToProductResponse(products, reviews)
     }
 
     override fun getProductByProductType(productType: String): List<Product> {
@@ -222,24 +202,90 @@ class ProductServiceImpl @Autowired constructor(
         return products.map { it.color }.distinct().takeIf { it.isNotEmpty() } ?: emptyList()
     }
 
-    override fun addToWishlist(userId: String, productId: String) {
-        val existingUser = userRepository.findById(userId).orElseThrow {
-            CustomException("User not found", HttpStatus.NOT_FOUND)
+    override fun addToWishlistBySkuBase(tokenStr: String, skuBase: String): List<ProductResponse> {
+        val token = tokenRepository.findByAccessToken(tokenStr)
+            ?: throw CustomException("Token not found", HttpStatus.NOT_FOUND)
+
+        val email = jwtTokenUtil.getUsernameFromToken(token.accessToken)
+        val user = userRepository.findByEmail(email)
+            ?: throw CustomException("User not found", HttpStatus.NOT_FOUND)
+
+        val products = productRepository.findBySkuBase(skuBase)
+        if (products.isEmpty()) {
+            throw CustomException("No products found with SKU base '$skuBase'", HttpStatus.NOT_FOUND)
         }
-        val existingProduct = productRepository.findById(productId.toString()).orElseThrow {
-            CustomException("Product not found", HttpStatus.NOT_FOUND)
+
+        val productIds = products.map { it.productId }
+        val reviews = reviewRepository.findByProductIdIn(productIds)
+
+        val wishlist = wishlistRepository.findByUserId(user.userId) ?: Wishlist(userId = user.userId)
+        products.forEach { product ->
+            if (!wishlist.productIds.contains(product.productId.toString())) {
+                wishlist.productIds.add(product.productId.toString())
+            }
         }
-        val wishlist = wishlistRepository.findByUserId(userId) ?: Wishlist(userId = existingUser.userId)
-        if (!wishlist.productIds.contains(productId)) {
-            wishlist.productIds.add(productId)
-            wishlistRepository.save(wishlist)
-        }
+
+        wishlistRepository.save(wishlist)
+
+        return mapToProductResponse(products, reviews)
     }
 
-    override fun getWishlist(userId: String): List<Product> {
-        val wishlist = wishlistRepository.findByUserId(userId) ?: return emptyList()
-        return productRepository.findAllById(wishlist.productIds)
+    override fun getWishlist(tokenStr: String): List<ProductResponse> {
+        val token = tokenRepository.findByAccessToken(tokenStr)
+            ?: throw CustomException("Token not found", HttpStatus.NOT_FOUND)
+
+        val email = jwtTokenUtil.getUsernameFromToken(token.accessToken)
+        val user = userRepository.findByEmail(email)
+            ?: throw CustomException("User not found", HttpStatus.NOT_FOUND)
+
+        val wishlist = wishlistRepository.findByUserId(user.userId)
+            ?: wishlistRepository.save(Wishlist(userId = user.userId, productIds = mutableListOf()))
+
+        if (wishlist.productIds.isEmpty()) {
+            return emptyList()
+        }
+
+        val products = productRepository.findAllById(wishlist.productIds)
+
+        if (products.isEmpty()) {
+            return emptyList()
+        }
+
+        val productIds = products.map { it.productId }
+        val reviews = reviewRepository.findByProductIdIn(productIds)
+
+        return mapToProductResponse(products, reviews)
     }
+
+    override fun deleteFromWishlistBySkuBase(tokenStr: String, skuBase: String): List<ProductResponse> {
+        val token = tokenRepository.findByAccessToken(tokenStr)
+            ?: throw CustomException("Token not found", HttpStatus.NOT_FOUND)
+
+        val email = jwtTokenUtil.getUsernameFromToken(token.accessToken)
+        val user = userRepository.findByEmail(email)
+            ?: throw CustomException("User not found", HttpStatus.NOT_FOUND)
+
+        val products = productRepository.findBySkuBase(skuBase)
+        if (products.isEmpty()) {
+            throw CustomException("No products found with SKU base '$skuBase'", HttpStatus.NOT_FOUND)
+        }
+
+        val wishlist = wishlistRepository.findByUserId(user.userId)
+            ?: throw CustomException("Wishlist not found for user", HttpStatus.NOT_FOUND)
+
+        val productIdsToRemove = products.map { it.productId.toString() }
+        wishlist.productIds.removeAll(productIdsToRemove)
+
+        wishlistRepository.save(wishlist)
+
+        val remainingProducts = productRepository.findAllById(
+            wishlist.productIds.map { it }
+        )
+        val reviews = reviewRepository.findByProductIdIn(remainingProducts.map { it.productId })
+
+        return mapToProductResponse(remainingProducts, reviews)
+    }
+
 
     override fun addReview(productId: ObjectId, reviewRequest: ReviewRequest): Review {
         val existingUser = userRepository.findById(reviewRequest.userId).orElseThrow {
@@ -262,13 +308,10 @@ class ProductServiceImpl @Autowired constructor(
     }
 
     override fun getReviewsBySkuBase(skuBase: String): List<ReviewResponse> {
-        // Fetch products with the given skuBase
         val products = productRepository.findBySkuBase(skuBase)
 
-        // Extract productIds
         val productIds = products.map { it.productId }
 
-        // Fetch reviews for those productIds
         val reviews = reviewRepository.findAll().filter { it.productId in productIds }
 
         // Map Review to ReviewResponse
@@ -278,7 +321,7 @@ class ProductServiceImpl @Autowired constructor(
                 id = review.id.toString(),
                 productId = review.productId.toString(),
                 userId = review.userId,
-                userName = userRepository.findById(review.userId).orElse(null).username, // Example function to fetch user name
+                userName = userRepository.findById(review.userId).orElse(null).username,
                 rating = review.rating,
                 comment = review.comment,
                 images = product?.images ?: emptyList(),
@@ -287,4 +330,35 @@ class ProductServiceImpl @Autowired constructor(
         }
     }
 
+    override fun mapToProductResponse(products: List<Product>, reviews: List<Review>): List<ProductResponse> {
+        return products.groupBy { it.skuBase }.map { (skuBase, productList) ->
+            val product = productList.first()
+
+            val relevantReviews = reviews.filter { review ->
+                productList.any { it.productId == review.productId }
+            }
+            val totalRating = relevantReviews.size
+            val averageRating = if (totalRating > 0) {
+                relevantReviews.sumOf { it.rating.toDouble() } / totalRating
+            } else {
+                0.0
+            }
+
+            val formattedAverageRating = String.format("%.1f", averageRating).toFloat()
+
+            ProductResponse(
+                skuBase = product.skuBase,
+                productName = product.productName,
+                price = product.price,
+                description = product.description,
+                status = product.status,
+                productType = product.productType,
+                averageRating = formattedAverageRating,
+                totalRating = totalRating,
+                sizes = productList.mapNotNull { it.size }.distinct(),
+                colors = productList.map { it.color }.distinct(),
+                images = productList.flatMap { it.images }.distinct(),
+            )
+        }
+    }
 }

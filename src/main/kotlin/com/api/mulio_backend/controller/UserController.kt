@@ -4,10 +4,8 @@ import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.ChangePasswordRequest
 import com.api.mulio_backend.helper.request.CustomerRequest
 import com.api.mulio_backend.helper.response.*
-import com.api.mulio_backend.service.CartService
-import com.api.mulio_backend.service.CustomerService
-import com.api.mulio_backend.service.OrderService
-import com.api.mulio_backend.service.UserService
+import com.api.mulio_backend.model.Product
+import com.api.mulio_backend.service.*
 import jakarta.validation.Valid
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.domain.Page
@@ -21,6 +19,7 @@ class UserController @Autowired constructor (
     private val userService: UserService,
     private val cartService: CartService,
     private val orderService: OrderService,
+    private val productService: ProductService,
     private val customerService: CustomerService
 ) {
 
@@ -131,6 +130,57 @@ class UserController @Autowired constructor (
         } catch (e: Exception) {
             ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ResponseObject(HttpStatus.BAD_REQUEST.value(), "An unexpected error occurred: ${e.message}", null))
+        }
+    }
+
+    @PostMapping("/wishlist")
+    fun addToWishlist(
+        @RequestHeader("Authorization") token: String,
+        @RequestParam skuBase: String
+    ): ResponseEntity<ResponseMessage<List<ProductResponse>>> {
+        val jwtToken = token.replace("Bearer ", "")
+        return try {
+            val response = productService.addToWishlistBySkuBase(jwtToken, skuBase)
+            ResponseEntity.ok(ResponseMessage("Products added to wishlist successfully", response))
+        } catch (e: CustomException) {
+            ResponseEntity.status(e.status)
+                .body(ResponseMessage("Error adding products to wishlist: ${e.message}", null))
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseMessage("An unexpected error occurred: ${e.message}", null))
+        }
+    }
+
+    @GetMapping("/wishlist")
+    fun getWishlist(@RequestHeader("Authorization") token: String): ResponseEntity<ResponseMessage<List<ProductResponse>>> {
+        val jwtToken = token.replace("Bearer ", "")
+        return try {
+            val wishlist = productService.getWishlist(jwtToken)
+            ResponseEntity.ok(ResponseMessage("Wishlist retrieved successfully", wishlist))
+        } catch (e: CustomException) {
+            ResponseEntity.status(e.status)
+                .body(ResponseMessage("Error retrieving wishlist: ${e.message}", emptyList()))
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseMessage("An unexpected error occurred: ${e.message}", emptyList()))
+        }
+    }
+
+    @DeleteMapping("/wishlist")
+    fun deleteFromWishlist(
+        @RequestHeader("Authorization") token: String,
+        @RequestParam skuBase: String
+    ): ResponseEntity<ResponseMessage<List<ProductResponse>>> {
+        val jwtToken = token.replace("Bearer ", "")
+        return try {
+            val response = productService.deleteFromWishlistBySkuBase(jwtToken, skuBase)
+            ResponseEntity.ok(ResponseMessage("Products removed from wishlist successfully", response))
+        } catch (e: CustomException) {
+            ResponseEntity.status(e.status)
+                .body(ResponseMessage("Error removing products from wishlist: ${e.message}", null))
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseMessage("An unexpected error occurred: ${e.message}", null))
         }
     }
 }

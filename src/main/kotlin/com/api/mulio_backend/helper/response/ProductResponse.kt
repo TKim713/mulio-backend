@@ -1,15 +1,15 @@
 package com.api.mulio_backend.helper.response
 
 data class ProductResponse(
-    val skuBase: String? = null,
-    val productName: String? = null,
-    val price: Float? = null,
-    val description: String? = null,
-    val status: String? = null,
-    val productType: String? = null,
-    val averageRating: Number? = null,
-    val totalRating: Int? = null,
-    val sizes: List<String> = emptyList(),
-    val colors: List<String> = emptyList(),
-    val images: List<String> = emptyList()
+    var skuBase: String? = null,
+    var productName: String? = null,
+    var price: Float? = null,
+    var description: String? = null,
+    var status: String? = null,
+    var productType: String? = null,
+    var averageRating: Number? = null,
+    var totalRating: Int? = null,
+    var sizes: List<String> = emptyList(),
+    var colors: List<String> = emptyList(),
+    var images: List<String> = emptyList()
 )

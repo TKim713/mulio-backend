@@ -6,7 +6,6 @@ import com.api.mulio_backend.helper.enums.Role
 import com.api.mulio_backend.helper.exception.CustomException
 import com.api.mulio_backend.helper.request.ChangePasswordRequest
 import com.api.mulio_backend.helper.request.CreateUserRequest
-import com.api.mulio_backend.helper.response.CartResponse
 import com.api.mulio_backend.helper.response.CreateUserResponse
 import com.api.mulio_backend.helper.response.ResponseObject
 import com.api.mulio_backend.helper.response.UserResponse

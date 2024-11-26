@@ -16,15 +16,17 @@ interface ProductService {
     fun updateProduct(productId: String, updateProductRequest: CreateProductRequest): Product?
     fun deleteProduct(productId: ObjectId): Boolean
     fun getAllProducts(): List<Product>
-    fun getProducts(pageable: Pageable): Page<Product>
+    fun getProducts(pageable: Pageable, search: String?): Page<Product>
     fun getProductsBySkuBase(skuBase: String): List<ProductResponse>
     fun getProductByProductType(productType: String): List<Product>
     fun getProductBySkuBaseAndAttributes(skuBase: String, color: String, size: String?): Product?
     fun getListSizeBySkuBase(skuBase: String): List<String?>
     fun getListColorBySkuBase(skuBaseName: String): List<String>
-    fun addToWishlist(userId: String, productId: String)
-    fun getWishlist(userId: String): List<Product>
+    fun addToWishlistBySkuBase(tokenStr: String, skuBase: String): List<ProductResponse>
+    fun getWishlist(tokenStr: String): List<ProductResponse>
+    fun deleteFromWishlistBySkuBase(tokenStr: String, skuBase: String): List<ProductResponse>
     fun addReview(productId: ObjectId, reviewRequest: ReviewRequest): Review
     fun getReviewsByProductId(productId: ObjectId): List<Review>
     fun getReviewsBySkuBase(skuBase: String): List<ReviewResponse>
+    fun mapToProductResponse(products: List<Product>, reviews: List<Review>): List<ProductResponse>
 }

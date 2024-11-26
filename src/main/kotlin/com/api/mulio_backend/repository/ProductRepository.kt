@@ -1,6 +1,8 @@
 package com.api.mulio_backend.repository
 
 import com.api.mulio_backend.model.Product
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
 import org.springframework.data.mongodb.repository.MongoRepository
 import org.springframework.data.mongodb.repository.Query
 import org.springframework.data.repository.query.Param
@@ -12,4 +14,10 @@ interface ProductRepository : MongoRepository<Product, String> {
     @Query("{ 'skuCode': { \$regex: '^?0-' } }")
     fun findBySkuBase(skuBase: String): List<Product>
     fun findByProductType(@Param("productType") productType: String): List<Product>
+    @Query("{ \$text: { \$search: ?0 } }")
+    fun findByProductNameContainingOrDescriptionContaining(
+        productName: String,
+        description: String,
+        pageable: Pageable
+    ): Page<Product>
 }
