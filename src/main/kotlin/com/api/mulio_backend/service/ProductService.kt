@@ -25,7 +25,8 @@ interface ProductService {
     fun addToWishlistBySkuBase(tokenStr: String, skuBase: String): List<ProductResponse>
     fun getWishlist(tokenStr: String): List<ProductResponse>
     fun deleteFromWishlistBySkuBase(tokenStr: String, skuBase: String): List<ProductResponse>
-    fun addReview(productId: ObjectId, reviewRequest: ReviewRequest): Review
+    fun addReview(tokenStr: String, productId: ObjectId, reviewRequest: ReviewRequest): Review
+    fun updateReview(tokenStr: String, reviewId: ObjectId, reviewRequest: ReviewRequest): Review
     fun getReviewsByProductId(productId: ObjectId): List<Review>
     fun getReviewsBySkuBase(skuBase: String): List<ReviewResponse>
     fun mapToProductResponse(products: List<Product>, reviews: List<Review>): List<ProductResponse>

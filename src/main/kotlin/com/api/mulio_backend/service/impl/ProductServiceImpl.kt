@@ -287,10 +287,12 @@ class ProductServiceImpl @Autowired constructor(
     }
 
 
-    override fun addReview(productId: ObjectId, reviewRequest: ReviewRequest): Review {
-        val existingUser = userRepository.findById(reviewRequest.userId).orElseThrow {
-            CustomException("User not found", HttpStatus.NOT_FOUND)
-        }
+    override fun addReview(tokenStr: String, productId: ObjectId, reviewRequest: ReviewRequest): Review {
+        val token = tokenRepository.findByAccessToken(tokenStr)
+            ?: throw CustomException("Token not found", HttpStatus.NOT_FOUND)
+        val email = jwtTokenUtil.getUsernameFromToken(token.accessToken)
+        val existingUser = userRepository.findByEmail(email)
+            ?: throw CustomException("User not found", HttpStatus.NOT_FOUND)
         val existingProduct = productRepository.findById(productId.toString()).orElseThrow {
             CustomException("Product not found", HttpStatus.NOT_FOUND)
         }
@@ -301,6 +303,30 @@ class ProductServiceImpl @Autowired constructor(
             comment = reviewRequest.comment,
             images = reviewRequest.images)
         return reviewRepository.save(review)
+    }
+
+    override fun updateReview(tokenStr: String, reviewId: ObjectId, reviewRequest: ReviewRequest): Review {
+        val token = tokenRepository.findByAccessToken(tokenStr)
+            ?: throw CustomException("Token not found", HttpStatus.NOT_FOUND)
+        val email = jwtTokenUtil.getUsernameFromToken(token.accessToken)
+        val existingUser = userRepository.findByEmail(email)
+            ?: throw CustomException("User not found", HttpStatus.NOT_FOUND)
+
+        val existingReview = reviewRepository.findById(reviewId).orElseThrow {
+            CustomException("Review not found", HttpStatus.NOT_FOUND)
+        }
+
+        if (existingReview.userId != existingUser.userId) {
+            throw CustomException("You are not authorized to update this review", HttpStatus.FORBIDDEN)
+        }
+
+        val updatedReview = existingReview.copy(
+            rating = reviewRequest.rating,
+            comment = reviewRequest.comment,
+            images = reviewRequest.images
+        )
+
+        return reviewRepository.save(updatedReview)
     }
 
     override fun getReviewsByProductId(productId: ObjectId): List<Review> {

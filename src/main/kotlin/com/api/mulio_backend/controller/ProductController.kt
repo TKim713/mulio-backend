@@ -195,11 +195,14 @@ class ProductController @Autowired constructor(
 
     @PostMapping("/reviews/{productId}")
     fun addReview(
+        @RequestHeader("Authorization") token: String,
         @PathVariable productId: String,
         @RequestBody reviewRequest: ReviewRequest
     ): ResponseEntity<ResponseObject<Review>> {
+        val jwtToken = token.replace("Bearer ", "")
         return try {
             val review = productService.addReview(
+                jwtToken,
                 ObjectId(productId),
                 reviewRequest
             )
@@ -208,6 +211,25 @@ class ProductController @Autowired constructor(
         } catch (e: CustomException) {
             ResponseEntity.status(e.status)
                 .body(ResponseObject(e.status.value(), "Error adding review: ${e.message}", null))
+        } catch (e: Exception) {
+            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseObject(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An unexpected error occurred: ${e.message}", null))
+        }
+    }
+
+    @PutMapping("/reviews/{reviewId}")
+    fun updateReview(
+        @RequestHeader("Authorization") token: String,
+        @PathVariable reviewId: String,
+        @RequestBody reviewRequest: ReviewRequest
+    ): ResponseEntity<ResponseObject<Review>> {
+        val jwtToken = token.replace("Bearer ", "")
+        return try {
+            val updatedReview = productService.updateReview(jwtToken, ObjectId(reviewId), reviewRequest)
+            ResponseEntity.ok(ResponseObject(HttpStatus.OK.value(), "Review updated successfully", updatedReview))
+        } catch (e: CustomException) {
+            ResponseEntity.status(e.status)
+                .body(ResponseObject(e.status.value(), "Error updating review: ${e.message}", null))
         } catch (e: Exception) {
             ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ResponseObject(HttpStatus.INTERNAL_SERVER_ERROR.value(), "An unexpected error occurred: ${e.message}", null))
