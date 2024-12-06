@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service
 class EmailServiceImpl(@Autowired private val javaMailSender: JavaMailSender) : EmailService {
 
     companion object {
-        private const val BASE_URL = "http://localhost:8080/api/auth/verify?token=" // Định nghĩa URL cơ bản ở đây
+        private const val BASE_URL = "http://localhost:3000/verify-email?token=" // Định nghĩa URL cơ bản ở đây
     }
 
     private val logger: Logger = LoggerFactory.getLogger(EmailServiceImpl::class.java)
